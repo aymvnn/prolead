@@ -47,6 +47,7 @@ export function buildWriteEmailPrompt(params: {
     sample_emails: string[];
   };
   companyProfile?: CompanyProfile | null;
+  emailLanguage?: string;
   campaignContext?: string;
   stepNumber?: number;
   previousEmails?: string[];
@@ -103,6 +104,17 @@ export function buildWriteEmailPrompt(params: {
   if (params.previousEmails && params.previousEmails.length > 0) {
     prompt += `\n\n**Eerdere emails in deze thread:**\n${params.previousEmails.join("\n---\n")}`;
   }
+
+  // Language instruction
+  const langMap: Record<string, string> = {
+    en: "English",
+    nl: "Nederlands",
+    ar: "Arabic",
+    de: "Deutsch",
+    fr: "Français",
+  };
+  const lang = langMap[params.emailLanguage || "en"] || "English";
+  prompt += `\n\n**TAAL: Schrijf de email in het ${lang}.**`;
 
   prompt += `\n\nGenereer de email in JSON format.`;
 

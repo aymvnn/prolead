@@ -64,13 +64,16 @@ export async function POST(request: NextRequest) {
     .single();
 
   let companyProfile = null;
+  let emailLanguage = "en";
   if (userData) {
     const { data: org } = await supabase
       .from("organizations")
-      .select("company_profile")
+      .select("company_profile, settings")
       .eq("id", userData.org_id)
       .single();
     companyProfile = org?.company_profile || null;
+    const settings = (org?.settings || {}) as Record<string, string>;
+    emailLanguage = settings.email_language || "en";
   }
 
   // Fetch previous emails in thread
@@ -105,6 +108,7 @@ export async function POST(request: NextRequest) {
           }
         : undefined,
       companyProfile,
+      emailLanguage,
       campaignContext,
       stepNumber,
       previousEmails,

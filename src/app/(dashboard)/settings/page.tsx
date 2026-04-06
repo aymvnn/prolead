@@ -193,48 +193,161 @@ export default function SettingsPage() {
 // ==========================================================
 
 function GeneralTab() {
+  const supabase = createClient();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [orgName, setOrgName] = useState("");
+  const [orgId, setOrgId] = useState("");
+  const [timezone, setTimezone] = useState("Europe/Amsterdam");
+  const [uiLanguage, setUiLanguage] = useState("nl");
+  const [emailLanguage, setEmailLanguage] = useState("en");
+  const [dailyLimit, setDailyLimit] = useState(100);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  async function loadSettings() {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoading(false); return; }
+
+    setUserEmail(user.email || "");
+
+    const { data: userData } = await supabase
+      .from("users").select("name, org_id").eq("id", user.id).single();
+
+    if (userData) {
+      setUserName(userData.name);
+      setOrgId(userData.org_id);
+
+      const { data: org } = await supabase
+        .from("organizations").select("name, settings").eq("id", userData.org_id).single();
+
+      if (org) {
+        setOrgName(org.name);
+        const s = (org.settings || {}) as Record<string, string | number>;
+        setTimezone((s.timezone as string) || "Europe/Amsterdam");
+        setUiLanguage((s.ui_language as string) || "nl");
+        setEmailLanguage((s.email_language as string) || "en");
+        setDailyLimit((s.daily_limit as number) || 100);
+      }
+    }
+    setLoading(false);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setSaved(false);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !orgId) { setSaving(false); return; }
+
+    await supabase.from("users").update({ name: userName }).eq("id", user.id);
+    await supabase.from("organizations").update({
+      name: orgName,
+      settings: { timezone, ui_language: uiLanguage, email_language: emailLanguage, daily_limit: dailyLimit },
+    }).eq("id", orgId);
+
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  }
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
+
   return (
     <div className="space-y-6">
-      <Card className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+      <Card>
         <CardHeader>
           <CardTitle className="text-sm">Profiel</CardTitle>
           <CardDescription>Je persoonlijke gegevens.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Voornaam</Label>
-              <Input
-                defaultValue="Jan"
-                className="bg-white dark:bg-neutral-950"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Achternaam</Label>
-              <Input
-                defaultValue="Bakker"
-                className="bg-white dark:bg-neutral-950"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Naam</Label>
+            <Input value={userName} onChange={(e) => setUserName(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label>Email</Label>
-            <Input
-              defaultValue="jan@prolead.nl"
-              className="bg-white dark:bg-neutral-950"
-            />
+            <Input value={userEmail} disabled className="opacity-60" />
           </div>
           <div className="space-y-2">
-            <Label>Bedrijfsnaam</Label>
-            <Input
-              defaultValue="ProLead"
-              className="bg-white dark:bg-neutral-950"
-            />
+            <Label>Organisatie naam</Label>
+            <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} />
           </div>
         </CardContent>
       </Card>
 
-      <Card className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Taal & Regio</CardTitle>
+          <CardDescription>
+            Stel in welke taal de interface en de AI-gegenereerde emails gebruiken.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Interface taal</Label>
+              <Select value={uiLanguage} onValueChange={(v) => v && setUiLanguage(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nl">Nederlands</SelectItem>
+                  <SelectItem value="en">English</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">De taal van de PROLEAD interface.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Email taal (AI)</Label>
+              <Select value={emailLanguage} onValueChange={(v) => v && setEmailLanguage(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="nl">Nederlands</SelectItem>
+                  <SelectItem value="ar">Arabic</SelectItem>
+                  <SelectItem value="de">Deutsch</SelectItem>
+                  <SelectItem value="fr">Francais</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">De taal waarin de AI emails schrijft.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Tijdzone</Label>
+              <Select value={timezone} onValueChange={(v) => v && setTimezone(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Europe/Amsterdam">Amsterdam (CET)</SelectItem>
+                  <SelectItem value="Europe/London">London (GMT)</SelectItem>
+                  <SelectItem value="Asia/Dubai">Dubai (GST)</SelectItem>
+                  <SelectItem value="Asia/Riyadh">Riyadh (AST)</SelectItem>
+                  <SelectItem value="America/New_York">New York (EST)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Dagelijkse email limiet</Label>
+              <Input
+                type="number"
+                min={1}
+                max={500}
+                value={dailyLimit}
+                onChange={(e) => setDailyLimit(parseInt(e.target.value) || 100)}
+              />
+              <p className="text-xs text-muted-foreground">Max emails per dag (Resend gratis = 100).</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader>
           <CardTitle className="text-sm">Voorkeuren</CardTitle>
           <CardDescription>App-instellingen en notificaties.</CardDescription>
@@ -242,51 +355,27 @@ function GeneralTab() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">Dark mode</p>
-              <p className="text-xs text-neutral-500">
-                Schakel de donkere weergave in.
-              </p>
-            </div>
-            <Switch />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
               <p className="text-sm font-medium">Email notificaties</p>
-              <p className="text-xs text-neutral-500">
-                Ontvang notificaties bij nieuwe replies.
-              </p>
+              <p className="text-xs text-muted-foreground">Ontvang notificaties bij nieuwe replies.</p>
             </div>
             <Switch defaultChecked />
           </div>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium">Dagelijks rapport</p>
-              <p className="text-xs text-neutral-500">
-                Ontvang een dagelijkse samenvatting per email.
-              </p>
+              <p className="text-xs text-muted-foreground">Ontvang een dagelijkse samenvatting per email.</p>
             </div>
             <Switch defaultChecked />
-          </div>
-          <div className="space-y-2">
-            <Label>Tijdzone</Label>
-            <Select defaultValue="cet">
-              <SelectTrigger className="bg-white dark:bg-neutral-950">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cet">CET (Amsterdam)</SelectItem>
-                <SelectItem value="gmt">GMT (Londen)</SelectItem>
-                <SelectItem value="est">EST (New York)</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </CardContent>
       </Card>
 
       <div className="flex justify-end">
-        <Button>
-          <Save className="mr-2 h-4 w-4" />
-          Opslaan
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> :
+           saved ? <CheckCircle2 className="mr-2 h-4 w-4" /> :
+           <Save className="mr-2 h-4 w-4" />}
+          {saved ? "Opgeslagen!" : "Opslaan"}
         </Button>
       </div>
     </div>
