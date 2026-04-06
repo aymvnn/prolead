@@ -151,6 +151,52 @@ export default function BedrijfsprofielPage() {
     supabase,
   ]);
 
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeUrl, setAnalyzeUrl] = useState("");
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+
+  async function handleAnalyzeWebsite() {
+    const url = analyzeUrl || website;
+    if (!url) return;
+    setAnalyzing(true);
+    setAnalyzeError(null);
+
+    try {
+      const res = await fetch("/api/ai/analyze-website", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setAnalyzeError(json.error || "Analyse mislukt");
+        setAnalyzing(false);
+        return;
+      }
+
+      const p = json.profile;
+
+      // Fill in fields (only overwrite if currently empty or user confirms)
+      if (p.company_name) setCompanyName(p.company_name);
+      if (!website && url) setWebsite(url);
+      if (p.description) setDescription(p.description);
+      if (p.products) setProducts(p.products);
+      if (p.usps && p.usps.length > 0) setUsps(p.usps);
+      if (p.pricing_info) setPricingInfo(p.pricing_info);
+      if (p.client_cases) setClientCases(p.client_cases);
+      if (p.competitive_advantage) setCompetitiveAdvantage(p.competitive_advantage);
+      if (p.target_regions) setTargetRegions(p.target_regions);
+      if (p.tone_of_voice) setToneOfVoice(p.tone_of_voice);
+      if (p.extra_context) setExtraContext(p.extra_context);
+    } catch {
+      setAnalyzeError("Kon de website niet analyseren. Controleer de URL.");
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
   function addUsp() {
     if (!newUsp.trim()) return;
     setUsps([...usps, newUsp.trim()]);
@@ -209,6 +255,57 @@ export default function BedrijfsprofielPage() {
               concurrentievoordelen om overtuigende emails te schrijven.
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Auto-fill from website */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Globe className="h-4 w-4 text-primary" />
+            Auto-invullen vanaf website
+          </CardTitle>
+          <CardDescription>
+            Vul je website URL in en de AI analyseert je site om het profiel
+            automatisch in te vullen. Je kunt daarna alles nog aanpassen.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder="bijv. assetplusgcc.com"
+              value={analyzeUrl || website}
+              onChange={(e) => setAnalyzeUrl(e.target.value)}
+            />
+            <Button
+              onClick={handleAnalyzeWebsite}
+              disabled={analyzing || (!analyzeUrl && !website)}
+              className="shrink-0 bg-gradient-brand text-white shadow-brand hover:opacity-90"
+            >
+              {analyzing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Analyseren...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  AI Auto-invullen
+                </>
+              )}
+            </Button>
+          </div>
+          {analyzeError && (
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950 dark:text-red-400">
+              {analyzeError}
+            </div>
+          )}
+          {analyzing && (
+            <p className="text-xs text-muted-foreground">
+              De AI leest je website en vult alle velden in. Dit duurt 10-20
+              seconden...
+            </p>
+          )}
         </CardContent>
       </Card>
 
