@@ -192,11 +192,12 @@ export default function SettingsPage() {
 // ==========================================================
 
 function GeneralTab() {
-  const supabase = createClient();
   const { t, switchLanguage } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [userId, setUserId] = useState("");
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [orgName, setOrgName] = useState("");
@@ -212,9 +213,11 @@ function GeneralTab() {
 
   async function loadSettings() {
     setLoading(true);
+    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
+    setUserId(user.id);
     setUserEmail(user.email || "");
 
     const { data: userData } = await supabase
@@ -240,16 +243,42 @@ function GeneralTab() {
   }
 
   async function handleSave() {
+    if (!userId || !orgId) return;
     setSaving(true);
     setSaved(false);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !orgId) { setSaving(false); return; }
+    setSaveError(null);
 
-    await supabase.from("users").update({ name: userName }).eq("id", user.id);
-    await supabase.from("organizations").update({
-      name: orgName,
-      settings: { timezone, ui_language: uiLanguage, email_language: emailLanguage, daily_limit: dailyLimit },
-    }).eq("id", orgId);
+    const supabase = createClient();
+
+    const { error: userError } = await supabase
+      .from("users")
+      .update({ name: userName })
+      .eq("id", userId);
+
+    if (userError) {
+      setSaveError(`User update failed: ${userError.message}`);
+      setSaving(false);
+      return;
+    }
+
+    const { error: orgError } = await supabase
+      .from("organizations")
+      .update({
+        name: orgName,
+        settings: {
+          timezone,
+          ui_language: uiLanguage,
+          email_language: emailLanguage,
+          daily_limit: dailyLimit,
+        },
+      })
+      .eq("id", orgId);
+
+    if (orgError) {
+      setSaveError(`Org update failed: ${orgError.message}`);
+      setSaving(false);
+      return;
+    }
 
     // Apply language change immediately
     switchLanguage(uiLanguage);
@@ -265,6 +294,11 @@ function GeneralTab() {
 
   return (
     <div className="space-y-6">
+      {saveError && (
+        <div className="rounded-md bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950 dark:text-red-400">
+          {saveError}
+        </div>
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">{t("settings.profile")}</CardTitle>
