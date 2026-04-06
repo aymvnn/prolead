@@ -305,11 +305,8 @@ function GeneralTab() {
         return;
       }
 
-      // Apply language change immediately
-      switchLanguage(uiLanguage);
-
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      // Reload page to apply language change across all components
+      window.location.reload();
     } catch (err) {
       setSaveError(`Fout: ${err instanceof Error ? err.message : "onbekend"}`);
     } finally {

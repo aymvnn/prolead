@@ -10,7 +10,21 @@ const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvYnpycmdnbWNicWlsa2pqbGdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDA4NjIsImV4cCI6MjA5MDg3Njg2Mn0.C6788iKFfaDTyXrK_f2_9klUORtoexblCP2APSVEVvw";
 
 export async function createClient() {
-  const cookieStore = await cookies();
+  let cookieStore: Awaited<ReturnType<typeof cookies>>;
+  try {
+    cookieStore = await cookies();
+  } catch {
+    // cookies() can throw outside of a request context
+    // Return a client with no cookies (unauthenticated)
+    return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      cookies: {
+        getAll() {
+          return [];
+        },
+        setAll() {},
+      },
+    });
+  }
 
   return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
@@ -23,7 +37,7 @@ export async function createClient() {
             cookieStore.set(name, value, options),
           );
         } catch {
-          // Ignored in Server Components — middleware handles session refresh
+          // Ignored in Server Components
         }
       },
     },
