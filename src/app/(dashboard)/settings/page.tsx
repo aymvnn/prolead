@@ -44,14 +44,15 @@ import {
   Zap,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useTranslation } from "@/components/language-provider";
 
 type SettingsTab = "general" | "email" | "voice" | "team";
 
-const tabs: { id: SettingsTab; label: string; icon: typeof Settings }[] = [
-  { id: "general", label: "Algemeen", icon: Settings },
-  { id: "email", label: "Email Accounts", icon: Mail },
-  { id: "voice", label: "Voice Profiles", icon: Mic },
-  { id: "team", label: "Team", icon: Users },
+const tabs: { id: SettingsTab; labelKey: string; icon: typeof Settings }[] = [
+  { id: "general", labelKey: "settings.general", icon: Settings },
+  { id: "email", labelKey: "settings.email", icon: Mail },
+  { id: "voice", labelKey: "settings.voice", icon: Mic },
+  { id: "team", labelKey: "settings.team", icon: Users },
 ];
 
 // ── Types ─────────────────────────────────────────────────
@@ -138,18 +139,16 @@ const demoTeam: TeamMember[] = [
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+  const { t } = useTranslation();
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2">
-          <Settings className="h-5 w-5" />
-          Instellingen
+          <Settings className="h-5 w-5 text-primary" />
+          {t("settings.title")}
         </h1>
-        <p className="text-sm text-neutral-500">
-          Beheer je account, email accounts, voice profiles en team.
-        </p>
       </div>
 
       {/* Tab Navigation */}
@@ -167,7 +166,7 @@ export default function SettingsPage() {
               }`}
             >
               <Icon className="h-4 w-4" />
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           );
         })}
@@ -194,6 +193,7 @@ export default function SettingsPage() {
 
 function GeneralTab() {
   const supabase = createClient();
+  const { t, switchLanguage } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -251,6 +251,9 @@ function GeneralTab() {
       settings: { timezone, ui_language: uiLanguage, email_language: emailLanguage, daily_limit: dailyLimit },
     }).eq("id", orgId);
 
+    // Apply language change immediately
+    switchLanguage(uiLanguage);
+
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -264,12 +267,12 @@ function GeneralTab() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Profiel</CardTitle>
-          <CardDescription>Je persoonlijke gegevens.</CardDescription>
+          <CardTitle className="text-sm">{t("settings.profile")}</CardTitle>
+          <CardDescription>{t("settings.profileDesc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Naam</Label>
+            <Label>{t("settings.name")}</Label>
             <Input value={userName} onChange={(e) => setUserName(e.target.value)} />
           </div>
           <div className="space-y-2">
@@ -277,7 +280,7 @@ function GeneralTab() {
             <Input value={userEmail} disabled className="opacity-60" />
           </div>
           <div className="space-y-2">
-            <Label>Organisatie naam</Label>
+            <Label>{t("settings.orgName")}</Label>
             <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} />
           </div>
         </CardContent>
@@ -285,15 +288,13 @@ function GeneralTab() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Taal & Regio</CardTitle>
-          <CardDescription>
-            Stel in welke taal de interface en de AI-gegenereerde emails gebruiken.
-          </CardDescription>
+          <CardTitle className="text-sm">{t("settings.langTitle")}</CardTitle>
+          <CardDescription>{t("settings.langDesc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Interface taal</Label>
+              <Label>{t("settings.uiLang")}</Label>
               <Select value={uiLanguage} onValueChange={(v) => v && setUiLanguage(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -301,10 +302,10 @@ function GeneralTab() {
                   <SelectItem value="en">English</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">De taal van de PROLEAD interface.</p>
+              <p className="text-xs text-muted-foreground">{t("settings.uiLangDesc")}</p>
             </div>
             <div className="space-y-2">
-              <Label>Email taal (AI)</Label>
+              <Label>{t("settings.emailLang")}</Label>
               <Select value={emailLanguage} onValueChange={(v) => v && setEmailLanguage(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -315,12 +316,12 @@ function GeneralTab() {
                   <SelectItem value="fr">Francais</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">De taal waarin de AI emails schrijft.</p>
+              <p className="text-xs text-muted-foreground">{t("settings.emailLangDesc")}</p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Tijdzone</Label>
+              <Label>{t("settings.timezone")}</Label>
               <Select value={timezone} onValueChange={(v) => v && setTimezone(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -333,7 +334,7 @@ function GeneralTab() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Dagelijkse email limiet</Label>
+              <Label>{t("settings.dailyLimit")}</Label>
               <Input
                 type="number"
                 min={1}
@@ -341,7 +342,7 @@ function GeneralTab() {
                 value={dailyLimit}
                 onChange={(e) => setDailyLimit(parseInt(e.target.value) || 100)}
               />
-              <p className="text-xs text-muted-foreground">Max emails per dag (Resend gratis = 100).</p>
+              <p className="text-xs text-muted-foreground">{t("settings.dailyLimitDesc")}</p>
             </div>
           </div>
         </CardContent>
@@ -349,21 +350,21 @@ function GeneralTab() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Voorkeuren</CardTitle>
-          <CardDescription>App-instellingen en notificaties.</CardDescription>
+          <CardTitle className="text-sm">{t("settings.prefs")}</CardTitle>
+          <CardDescription>{t("settings.prefsDesc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">Email notificaties</p>
-              <p className="text-xs text-muted-foreground">Ontvang notificaties bij nieuwe replies.</p>
+              <p className="text-sm font-medium">{t("settings.emailNotif")}</p>
+              <p className="text-xs text-muted-foreground">{t("settings.emailNotifDesc")}</p>
             </div>
             <Switch defaultChecked />
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">Dagelijks rapport</p>
-              <p className="text-xs text-muted-foreground">Ontvang een dagelijkse samenvatting per email.</p>
+              <p className="text-sm font-medium">{t("settings.dailyReport")}</p>
+              <p className="text-xs text-muted-foreground">{t("settings.dailyReportDesc")}</p>
             </div>
             <Switch defaultChecked />
           </div>
@@ -375,7 +376,7 @@ function GeneralTab() {
           {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> :
            saved ? <CheckCircle2 className="mr-2 h-4 w-4" /> :
            <Save className="mr-2 h-4 w-4" />}
-          {saved ? "Opgeslagen!" : "Opslaan"}
+          {saved ? t("settings.saved") : t("settings.save")}
         </Button>
       </div>
     </div>

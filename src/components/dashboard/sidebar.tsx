@@ -30,24 +30,25 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useTranslation } from "@/components/language-provider";
 
 const navItems = [
-  { href: "/overview", label: "Overzicht", icon: LayoutDashboard },
-  { href: "/bedrijf", label: "Bedrijfsprofiel", icon: Building2 },
-  { href: "/leadprompter", label: "Lead Prompter", icon: Sparkles },
-  { href: "/leads", label: "Leads", icon: Users },
-  { href: "/campaigns", label: "Campaigns", icon: Megaphone },
-  { href: "/sequences", label: "Sequences", icon: GitBranch },
-  { href: "/inbox", label: "Inbox", icon: Inbox },
-  { href: "/meetings", label: "Meetings", icon: Calendar },
-  { href: "/templates", label: "Templates", icon: FileText },
-  { href: "/icp", label: "ICP Forge", icon: Target },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/integrations", label: "Integraties", icon: Plug },
+  { href: "/overview", labelKey: "nav.overview", icon: LayoutDashboard },
+  { href: "/bedrijf", labelKey: "nav.company", icon: Building2 },
+  { href: "/leadprompter", labelKey: "nav.leadprompter", icon: Sparkles },
+  { href: "/leads", labelKey: "nav.leads", icon: Users },
+  { href: "/campaigns", labelKey: "nav.campaigns", icon: Megaphone },
+  { href: "/sequences", labelKey: "nav.sequences", icon: GitBranch },
+  { href: "/inbox", labelKey: "nav.inbox", icon: Inbox },
+  { href: "/meetings", labelKey: "nav.meetings", icon: Calendar },
+  { href: "/templates", labelKey: "nav.templates", icon: FileText },
+  { href: "/icp", labelKey: "nav.icp", icon: Target },
+  { href: "/analytics", labelKey: "nav.analytics", icon: BarChart3 },
+  { href: "/integrations", labelKey: "nav.integrations", icon: Plug },
 ];
 
 const bottomItems = [
-  { href: "/settings", label: "Instellingen", icon: Settings },
+  { href: "/settings", labelKey: "nav.settings", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -55,6 +56,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useTranslation();
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -74,9 +76,7 @@ export function Sidebar() {
         {!collapsed && (
           <Link href="/leads" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-brand shadow-brand">
-              <span className="text-sm font-bold text-white">
-                P
-              </span>
+              <span className="text-sm font-bold text-white">P</span>
             </div>
             <span className="text-lg font-bold tracking-tight">PROLEAD</span>
           </Link>
@@ -101,23 +101,7 @@ export function Sidebar() {
           const isActive =
             pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;
-
-          const linkContent = (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-primary/8 text-primary dark:bg-primary/10 dark:text-primary"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                collapsed && "justify-center px-2",
-              )}
-            >
-              <Icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
-          );
+          const label = t(item.labelKey);
 
           if (collapsed) {
             return (
@@ -138,12 +122,26 @@ export function Sidebar() {
                 >
                   <Icon className="h-5 w-5 shrink-0" />
                 </TooltipTrigger>
-                <TooltipContent side="right">{item.label}</TooltipContent>
+                <TooltipContent side="right">{label}</TooltipContent>
               </Tooltip>
             );
           }
 
-          return linkContent;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-primary/8 text-primary dark:bg-primary/10 dark:text-primary"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+              )}
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              <span>{label}</span>
+            </Link>
+          );
         })}
       </nav>
 
@@ -166,19 +164,19 @@ export function Sidebar() {
               )}
             >
               <Icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && <span>{t(item.labelKey)}</span>}
             </Link>
           );
         })}
         <button
           onClick={handleLogout}
           className={cn(
-            "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white",
+            "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
             collapsed && "justify-center px-2",
           )}
         >
           <LogOut className="h-5 w-5 shrink-0" />
-          {!collapsed && <span>Uitloggen</span>}
+          {!collapsed && <span>{t("nav.logout")}</span>}
         </button>
       </div>
     </aside>
