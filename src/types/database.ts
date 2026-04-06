@@ -40,10 +40,25 @@ export type TriggerEventType = "job_change" | "funding" | "new_hire" | "company_
 
 // ── Table Types ────────────────────────────
 
+export interface CompanyProfile {
+  company_name?: string;
+  website?: string;
+  description?: string;
+  products?: string;
+  usps?: string[];
+  pricing_info?: string;
+  client_cases?: string;
+  competitive_advantage?: string;
+  target_regions?: string;
+  tone_of_voice?: string;
+  extra_context?: string;
+}
+
 export interface Organization {
   id: string;
   name: string;
   settings: Json;
+  company_profile: CompanyProfile;
   created_at: string;
 }
 

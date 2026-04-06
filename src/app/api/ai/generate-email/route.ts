@@ -56,6 +56,23 @@ export async function POST(request: NextRequest) {
     if (data) campaignContext = `Campaign: ${data.name}`;
   }
 
+  // Fetch company profile from organization
+  const { data: userData } = await supabase
+    .from("users")
+    .select("org_id")
+    .eq("id", user.id)
+    .single();
+
+  let companyProfile = null;
+  if (userData) {
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("company_profile")
+      .eq("id", userData.org_id)
+      .single();
+    companyProfile = org?.company_profile || null;
+  }
+
   // Fetch previous emails in thread
   let previousEmails: string[] = [];
   if (stepNumber && stepNumber > 1) {
@@ -87,6 +104,7 @@ export async function POST(request: NextRequest) {
             sample_emails: voiceProfile.sample_emails,
           }
         : undefined,
+      companyProfile,
       campaignContext,
       stepNumber,
       previousEmails,

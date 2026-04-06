@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
+  Building2,
   Sparkles,
   Users,
   Megaphone,
@@ -32,6 +33,7 @@ import {
 
 const navItems = [
   { href: "/overview", label: "Overzicht", icon: LayoutDashboard },
+  { href: "/bedrijf", label: "Bedrijfsprofiel", icon: Building2 },
   { href: "/leadprompter", label: "Lead Prompter", icon: Sparkles },
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },

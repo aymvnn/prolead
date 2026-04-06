@@ -1,3 +1,5 @@
+import type { CompanyProfile } from "@/types/database";
+
 export const WRITER_AGENT_SYSTEM_PROMPT = `Je bent de PROLEAD Writer Agent. Je schrijft gepersonaliseerde cold outreach emails.
 
 ## Je rol
@@ -10,6 +12,7 @@ Je schrijft unieke, gepersonaliseerde emails die authentiek klinken - geen templ
 4. **Geen generieks**: Vermijd "Ik hoop dat het goed met je gaat" of "Ik zag je profiel"
 5. **Duidelijke CTA**: Eindig met een specifieke, makkelijke call-to-action
 6. **Tone matching**: Schrijf in de stijl/stem die is aangegeven
+7. **Bedrijfskennis**: Gebruik de USPs, klantcases en concurrentievoordelen van het bedrijfsprofiel
 
 ## Output format
 Antwoord ALTIJD in dit JSON format:
@@ -26,6 +29,8 @@ Antwoord ALTIJD in dit JSON format:
 - Gebruik een menselijke, conversationele toon
 - Refereer aan specifieke triggers of informatie
 - Maak de CTA zo laagdrempelig mogelijk
+- Gebruik concrete cijfers uit het bedrijfsprofiel (bijv. kostenbesparing, capaciteit)
+- Noem relevante klantcases als social proof
 `;
 
 export function buildWriteEmailPrompt(params: {
@@ -41,6 +46,7 @@ export function buildWriteEmailPrompt(params: {
     style_guidelines?: string | null;
     sample_emails: string[];
   };
+  companyProfile?: CompanyProfile | null;
   campaignContext?: string;
   stepNumber?: number;
   previousEmails?: string[];
@@ -55,6 +61,25 @@ export function buildWriteEmailPrompt(params: {
 
   if (params.lead.enrichment_data) {
     prompt += `\n\n**Research data:**\n${JSON.stringify(params.lead.enrichment_data, null, 2)}`;
+  }
+
+  // Company profile — the core context for all emails
+  if (params.companyProfile) {
+    const cp = params.companyProfile;
+    prompt += `\n\n**=== ONS BEDRIJF (gebruik dit in de email) ===**`;
+    if (cp.company_name) prompt += `\n- Bedrijf: ${cp.company_name}`;
+    if (cp.website) prompt += `\n- Website: ${cp.website}`;
+    if (cp.description) prompt += `\n- Wat we doen: ${cp.description}`;
+    if (cp.products) prompt += `\n- Product/dienst: ${cp.products}`;
+    if (cp.usps && cp.usps.length > 0)
+      prompt += `\n- USPs:\n${cp.usps.map((u) => `  • ${u}`).join("\n")}`;
+    if (cp.pricing_info) prompt += `\n- Prijsindicatie: ${cp.pricing_info}`;
+    if (cp.client_cases) prompt += `\n- Klantcases/referenties: ${cp.client_cases}`;
+    if (cp.competitive_advantage)
+      prompt += `\n- Concurrentievoordeel: ${cp.competitive_advantage}`;
+    if (cp.target_regions) prompt += `\n- Doelmarkt: ${cp.target_regions}`;
+    if (cp.tone_of_voice) prompt += `\n- Communicatiestijl: ${cp.tone_of_voice}`;
+    if (cp.extra_context) prompt += `\n- Extra context: ${cp.extra_context}`;
   }
 
   if (params.voiceProfile) {
