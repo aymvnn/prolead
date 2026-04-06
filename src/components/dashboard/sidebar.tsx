@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/tooltip";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/overview", label: "Overzicht", icon: LayoutDashboard },
   { href: "/leadprompter", label: "Lead Prompter", icon: Sparkles },
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },
@@ -70,7 +70,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b border-neutral-200 px-4 dark:border-neutral-800">
         {!collapsed && (
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/leads" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-brand shadow-brand">
               <span className="text-sm font-bold text-white">
                 P
@@ -97,9 +97,7 @@ export function Sidebar() {
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
         {navItems.map((item) => {
           const isActive =
-            item.href === "/"
-              ? pathname === "/"
-              : pathname === item.href || pathname.startsWith(item.href + "/");
+            pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;
 
           const linkContent = (

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,6 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const router = useRouter();
 
   const handleSignup = useCallback(
     async (e: React.FormEvent) => {
@@ -38,21 +36,38 @@ export default function SignupPage() {
         return;
       }
 
-      const supabase = createClient();
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { name } },
-      });
+      try {
+        const supabase = createClient();
 
-      if (signUpError) {
-        setError(signUpError.message);
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { name },
+            emailRedirectTo: `${window.location.origin}/login`,
+          },
+        });
+
+        if (signUpError) {
+          setError(signUpError.message);
+          setLoading(false);
+          return;
+        }
+
+        // If user is returned with a session, auto-confirm is on — redirect
+        if (data.session) {
+          window.location.href = "/leads";
+          return;
+        }
+
+        setSuccess(true);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Er ging iets mis bij het registreren.";
+        setError(message);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      setSuccess(true);
-      setLoading(false);
     },
     [email, password, name],
   );

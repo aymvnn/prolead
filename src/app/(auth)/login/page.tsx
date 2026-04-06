@@ -30,20 +30,29 @@ export default function LoginPage() {
       setLoading(true);
       setError(null);
 
-      const supabase = createClient();
-      const { error: loginError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      try {
+        const supabase = createClient();
 
-      if (loginError) {
-        setError(loginError.message);
+        const { error: loginError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (loginError) {
+          setError(loginError.message);
+          setLoading(false);
+          return;
+        }
+
+        router.push("/leads");
+        router.refresh();
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Er ging iets mis bij het inloggen.";
+        setError(message);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      router.push("/");
-      router.refresh();
     },
     [email, password, router],
   );
