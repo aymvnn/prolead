@@ -6,10 +6,11 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { setLanguage, t as translate, getLanguage } from "@/lib/i18n";
+import { setLanguage, t as translate } from "@/lib/i18n";
 
 interface LanguageContextValue {
   lang: string;
@@ -29,10 +30,8 @@ export function useTranslation() {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLang] = useState("nl");
-  const [, setTick] = useState(0); // force re-render on language change
 
   useEffect(() => {
-    // Load language from organization settings
     const supabase = createClient();
     (async () => {
       const {
@@ -66,17 +65,22 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const switchLanguage = useCallback((newLang: string) => {
     setLanguage(newLang);
     setLang(newLang);
-    setTick((n) => n + 1);
   }, []);
 
-  const t = useCallback(
-    (key: string) => translate(key),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Create a new `t` function reference every time `lang` changes.
+  // This forces all consumers of useTranslation() to re-render.
+  const t = useMemo(
+    () => (key: string) => translate(key),
     [lang],
   );
 
+  const value = useMemo(
+    () => ({ lang, t, switchLanguage }),
+    [lang, t, switchLanguage],
+  );
+
   return (
-    <LanguageContext.Provider value={{ lang, t, switchLanguage }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );
