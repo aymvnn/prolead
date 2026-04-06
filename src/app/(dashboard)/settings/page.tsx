@@ -243,49 +243,78 @@ function GeneralTab() {
   }
 
   async function handleSave() {
-    if (!userId || !orgId) return;
     setSaving(true);
     setSaved(false);
     setSaveError(null);
 
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
 
-    const { error: userError } = await supabase
-      .from("users")
-      .update({ name: userName })
-      .eq("id", userId);
+      // Re-fetch user if needed
+      let uid = userId;
+      let oid = orgId;
 
-    if (userError) {
-      setSaveError(`User update failed: ${userError.message}`);
+      if (!uid || !oid) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setSaveError("Niet ingelogd. Ververs de pagina.");
+          setSaving(false);
+          return;
+        }
+        uid = user.id;
+        setUserId(uid);
+
+        const { data: ud } = await supabase
+          .from("users").select("org_id").eq("id", uid).single();
+        if (!ud) {
+          setSaveError("Gebruiker niet gevonden in database.");
+          setSaving(false);
+          return;
+        }
+        oid = ud.org_id;
+        setOrgId(oid);
+      }
+
+      const { error: userError } = await supabase
+        .from("users")
+        .update({ name: userName })
+        .eq("id", uid);
+
+      if (userError) {
+        setSaveError(`User update: ${userError.message}`);
+        setSaving(false);
+        return;
+      }
+
+      const { error: orgError } = await supabase
+        .from("organizations")
+        .update({
+          name: orgName,
+          settings: {
+            timezone,
+            ui_language: uiLanguage,
+            email_language: emailLanguage,
+            daily_limit: dailyLimit,
+          },
+        })
+        .eq("id", oid);
+
+      if (orgError) {
+        setSaveError(`Org update: ${orgError.message}`);
+        setSaving(false);
+        return;
+      }
+
+      // Apply language change immediately
+      switchLanguage(uiLanguage);
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setSaveError(`Fout: ${err instanceof Error ? err.message : "onbekend"}`);
+    } finally {
       setSaving(false);
-      return;
     }
-
-    const { error: orgError } = await supabase
-      .from("organizations")
-      .update({
-        name: orgName,
-        settings: {
-          timezone,
-          ui_language: uiLanguage,
-          email_language: emailLanguage,
-          daily_limit: dailyLimit,
-        },
-      })
-      .eq("id", orgId);
-
-    if (orgError) {
-      setSaveError(`Org update failed: ${orgError.message}`);
-      setSaving(false);
-      return;
-    }
-
-    // Apply language change immediately
-    switchLanguage(uiLanguage);
-
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
   }
 
   if (loading) {
