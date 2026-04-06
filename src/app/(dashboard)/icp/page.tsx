@@ -48,8 +48,10 @@ import {
   Trash2,
   FileText,
 } from "lucide-react";
+import { useTranslation } from "@/components/language-provider";
 
 export default function ICPPage() {
+  const { t } = useTranslation();
   // ICP profiles list
   const [profiles, setProfiles] = useState<ICPProfile[]>([]);
   const [activeProfile, setActiveProfile] = useState<ICPProfile | null>(null);
@@ -257,29 +259,28 @@ export default function ICPPage() {
         <div>
           <h1 className="flex items-center gap-2 text-xl font-bold">
             <Target className="h-5 w-5" />
-            ICP Prompt Forge
+            {t("icp.title")}
           </h1>
           <p className="text-sm text-neutral-500">
-            Definieer je Ideal Customer Profile. De AI gebruikt dit om leads te
-            scoren en emails te personaliseren.
+            {t("icp.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
             <DialogTrigger render={<Button variant="outline" />}>
               <Plus className="mr-2 h-4 w-4" />
-              Nieuw profiel
+              {t("icp.newProfile")}
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Nieuw ICP Profiel</DialogTitle>
+                <DialogTitle>{t("icp.newProfileTitle")}</DialogTitle>
                 <DialogDescription>
-                  Geef een naam voor het nieuwe profiel. De huidige instellingen worden overgenomen.
+                  {t("icp.newProfileDesc")}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="profile_name">Profielnaam</Label>
+                  <Label htmlFor="profile_name">{t("icp.profileName")}</Label>
                   <Input
                     id="profile_name"
                     placeholder="bijv. SaaS Founders Benelux"
@@ -299,20 +300,20 @@ export default function ICPPage() {
                   variant="outline"
                   onClick={() => setShowNewDialog(false)}
                 >
-                  Annuleren
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   onClick={handleCreateProfile}
                   disabled={!newProfileName.trim() || saving}
                 >
-                  {saving ? "Aanmaken..." : "Aanmaken"}
+                  {saving ? t("common.loading") : t("common.create")}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
           <Button onClick={handleSave} disabled={saving || !activeProfile}>
             <Save className="mr-2 h-4 w-4" />
-            {saving ? "Opslaan..." : "Opslaan"}
+            {saving ? t("common.loading") : t("common.save")}
           </Button>
         </div>
       </div>
@@ -337,7 +338,7 @@ export default function ICPPage() {
                 {profile.name}
                 {profile.is_active && (
                   <Badge variant="secondary" className="ml-1 text-xs">
-                    Actief
+                    {t("common.active")}
                   </Badge>
                 )}
               </button>
@@ -369,9 +370,9 @@ export default function ICPPage() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Target className="mb-4 h-12 w-12 text-neutral-300" />
-            <h3 className="mb-2 text-lg font-medium">Nog geen ICP profielen</h3>
+            <h3 className="mb-2 text-lg font-medium">{t("icp.noProfiles")}</h3>
             <p className="mb-4 text-sm text-neutral-500">
-              Vul de criteria hieronder in en klik op &ldquo;Nieuw profiel&rdquo; om je eerste ICP op te slaan.
+              {t("icp.noProfilesDesc")}
             </p>
           </CardContent>
         </Card>
@@ -383,10 +384,10 @@ export default function ICPPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Building2 className="h-4 w-4" />
-              Industrie&euml;n
+              {t("icp.industries")}
             </CardTitle>
             <CardDescription>
-              In welke sectoren opereren je ideale klanten?
+              {t("icp.industriesDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -411,7 +412,7 @@ export default function ICPPage() {
             </div>
             <div className="flex gap-2">
               <Input
-                placeholder="Industrie toevoegen..."
+                placeholder={t("icp.addIndustry")}
                 value={newIndustry}
                 onChange={(e) => setNewIndustry(e.target.value)}
                 onKeyDown={(e) => {
@@ -450,16 +451,16 @@ export default function ICPPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Users className="h-4 w-4" />
-              Bedrijfsgrootte
+              {t("icp.companySize")}
             </CardTitle>
             <CardDescription>
-              Hoe groot zijn je ideale klanten?
+              {t("icp.companySizeDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Minimaal aantal medewerkers</Label>
+                <Label>{t("icp.minEmployees")}</Label>
                 <Input
                   type="number"
                   value={minEmployees}
@@ -468,7 +469,7 @@ export default function ICPPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Maximaal aantal medewerkers</Label>
+                <Label>{t("icp.maxEmployees")}</Label>
                 <Input
                   type="number"
                   value={maxEmployees}
@@ -485,10 +486,10 @@ export default function ICPPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Briefcase className="h-4 w-4" />
-              Functietitels
+              {t("icp.titles")}
             </CardTitle>
             <CardDescription>
-              Welke functies wil je bereiken?
+              {t("icp.titlesDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -507,7 +508,7 @@ export default function ICPPage() {
             </div>
             <div className="flex gap-2">
               <Input
-                placeholder="Functietitel toevoegen..."
+                placeholder={t("icp.addTitle")}
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 onKeyDown={(e) => {
@@ -534,39 +535,39 @@ export default function ICPPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Globe className="h-4 w-4" />
-              Geografie
+              {t("icp.geography")}
             </CardTitle>
             <CardDescription>
-              In welke regio&rsquo;s opereren je ideale klanten?
+              {t("icp.geographyDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Regio&rsquo;s</Label>
+              <Label>{t("icp.regions")}</Label>
               <Select value={region} onValueChange={(v) => v && setRegion(v)}>
                 <SelectTrigger className="bg-white dark:bg-neutral-950">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="nl">Nederland</SelectItem>
-                  <SelectItem value="benelux">Benelux</SelectItem>
-                  <SelectItem value="dach">DACH</SelectItem>
-                  <SelectItem value="europe">Europa</SelectItem>
-                  <SelectItem value="global">Wereldwijd</SelectItem>
+                  <SelectItem value="nl">{t("icp.regionNl")}</SelectItem>
+                  <SelectItem value="benelux">{t("icp.regionBenelux")}</SelectItem>
+                  <SelectItem value="dach">{t("icp.regionDach")}</SelectItem>
+                  <SelectItem value="europe">{t("icp.regionEurope")}</SelectItem>
+                  <SelectItem value="global">{t("icp.regionGlobal")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Talen</Label>
+              <Label>{t("icp.languages")}</Label>
               <Select value={language} onValueChange={(v) => v && setLanguage(v)}>
                 <SelectTrigger className="bg-white dark:bg-neutral-950">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="nl">Nederlands</SelectItem>
-                  <SelectItem value="en">Engels</SelectItem>
-                  <SelectItem value="de">Duits</SelectItem>
-                  <SelectItem value="fr">Frans</SelectItem>
+                  <SelectItem value="nl">{t("icp.langNl")}</SelectItem>
+                  <SelectItem value="en">{t("icp.langEn")}</SelectItem>
+                  <SelectItem value="de">{t("icp.langDe")}</SelectItem>
+                  <SelectItem value="fr">{t("icp.langFr")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -578,10 +579,10 @@ export default function ICPPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <AlertTriangle className="h-4 w-4" />
-              Pijnpunten
+              {t("icp.painPoints")}
             </CardTitle>
             <CardDescription>
-              Welke problemen los je op voor je ideale klant?
+              {t("icp.painPointsDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -605,7 +606,7 @@ export default function ICPPage() {
             </div>
             <div className="flex gap-2">
               <Input
-                placeholder="Pijnpunt toevoegen..."
+                placeholder={t("icp.addPainPoint")}
                 value={newPainPoint}
                 onChange={(e) => setNewPainPoint(e.target.value)}
                 onKeyDown={(e) => {
@@ -644,11 +645,10 @@ export default function ICPPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <TrendingUp className="h-4 w-4" />
-              Waardepropositie
+              {t("icp.valueProposition")}
             </CardTitle>
             <CardDescription>
-              Beschrijf kort wat je product/dienst uniek maakt voor deze
-              doelgroep.
+              {t("icp.valuePropositionDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent>

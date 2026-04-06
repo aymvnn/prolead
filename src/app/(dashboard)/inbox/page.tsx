@@ -38,6 +38,7 @@ import {
   Mail,
   MessageSquare,
 } from "lucide-react";
+import { useTranslation } from "@/components/language-provider";
 
 type ConversationWithLead = Conversation & { lead: Lead | null };
 
@@ -52,22 +53,22 @@ const statusBadgeColors: Record<ConversationStatus, string> = {
     "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
 };
 
-const statusLabels: Record<ConversationStatus, string> = {
-  active: "Actief",
-  paused: "Gepauzeerd",
-  closed: "Gesloten",
-  escalated: "Geescaleerd",
+const statusKeys: Record<ConversationStatus, string> = {
+  active: "inbox.statusActive",
+  paused: "inbox.statusPaused",
+  closed: "inbox.statusClosed",
+  escalated: "inbox.statusEscalated",
 };
 
-const intentLabels: Record<string, string> = {
-  meeting: "Meeting",
-  objection: "Bezwaar",
-  question: "Vraag",
-  not_interested: "Geen interesse",
-  unsubscribe: "Afmelden",
-  positive: "Positief",
-  neutral: "Neutraal",
-  unknown: "Onbekend",
+const intentKeys: Record<string, string> = {
+  meeting: "inbox.intentMeeting",
+  objection: "inbox.intentObjection",
+  question: "inbox.intentQuestion",
+  not_interested: "inbox.intentNotInterested",
+  unsubscribe: "inbox.intentUnsubscribe",
+  positive: "inbox.intentPositive",
+  neutral: "inbox.intentNeutral",
+  unknown: "inbox.intentUnknown",
 };
 
 const intentColors: Record<string, string> = {
@@ -94,6 +95,7 @@ const channelLabels: Record<string, string> = {
 };
 
 export default function InboxPage() {
+  const { t } = useTranslation();
   const [conversations, setConversations] = useState<ConversationWithLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -160,7 +162,7 @@ export default function InboxPage() {
   }
 
   function getLeadDisplayName(lead: Lead | null): string {
-    if (!lead) return "Onbekend";
+    if (!lead) return t("inbox.unknown");
     return `${lead.first_name} ${lead.last_name}`;
   }
 
@@ -213,7 +215,7 @@ export default function InboxPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
             <Input
               type="search"
-              placeholder="Zoek berichten..."
+              placeholder={t("inbox.search")}
               className="bg-neutral-50 pl-9 dark:bg-neutral-900"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -228,11 +230,11 @@ export default function InboxPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Alle statussen</SelectItem>
-                <SelectItem value="active">Actief</SelectItem>
-                <SelectItem value="paused">Gepauzeerd</SelectItem>
-                <SelectItem value="closed">Gesloten</SelectItem>
-                <SelectItem value="escalated">Geescaleerd</SelectItem>
+                <SelectItem value="all">{t("inbox.allStatuses")}</SelectItem>
+                <SelectItem value="active">{t("inbox.statusActive")}</SelectItem>
+                <SelectItem value="paused">{t("inbox.statusPaused")}</SelectItem>
+                <SelectItem value="closed">{t("inbox.statusClosed")}</SelectItem>
+                <SelectItem value="escalated">{t("inbox.statusEscalated")}</SelectItem>
               </SelectContent>
             </Select>
             <Select
@@ -243,7 +245,7 @@ export default function InboxPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Kanaal</SelectItem>
+                <SelectItem value="all">{t("inbox.channel")}</SelectItem>
                 <SelectItem value="email">Email</SelectItem>
                 <SelectItem value="linkedin">LinkedIn</SelectItem>
               </SelectContent>
@@ -259,7 +261,7 @@ export default function InboxPage() {
             <div className="flex flex-col items-center gap-2 p-8 text-center">
               <InboxIcon className="h-8 w-8 text-neutral-300 dark:text-neutral-600" />
               <p className="text-sm text-neutral-500">
-                Geen gesprekken gevonden
+                {t("inbox.noConversations")}
               </p>
             </div>
           ) : (
@@ -291,7 +293,7 @@ export default function InboxPage() {
                   </p>
                   {lastMsg && (
                     <p className="mt-1 truncate text-xs text-neutral-400">
-                      {lastMsg.role === "assistant" ? "Jij: " : ""}
+                      {lastMsg.role === "assistant" ? `${t("inbox.you")}: ` : ""}
                       {lastMsg.content}
                     </p>
                   )}
@@ -300,15 +302,14 @@ export default function InboxPage() {
                       variant="secondary"
                       className={`text-[10px] ${statusBadgeColors[conv.status]}`}
                     >
-                      {statusLabels[conv.status]}
+                      {t(statusKeys[conv.status])}
                     </Badge>
                     {conv.intent_classification && (
                       <Badge
                         variant="secondary"
                         className={`text-[10px] ${intentColors[conv.intent_classification] || ""}`}
                       >
-                        {intentLabels[conv.intent_classification] ||
-                          conv.intent_classification}
+                        {intentKeys[conv.intent_classification] ? t(intentKeys[conv.intent_classification]) : conv.intent_classification}
                       </Badge>
                     )}
                     <Badge variant="secondary" className="text-[10px]">
@@ -347,7 +348,7 @@ export default function InboxPage() {
                   }
                 >
                   <CheckCircle2 className="mr-1 h-3 w-3" />
-                  Sluiten
+                  {t("inbox.close")}
                 </Button>
                 <Button
                   variant="ghost"
@@ -359,7 +360,7 @@ export default function InboxPage() {
                   }
                 >
                   <AlertTriangle className="mr-1 h-3 w-3" />
-                  Escaleren
+                  {t("inbox.escalate")}
                 </Button>
                 <Button
                   variant="ghost"
@@ -376,12 +377,12 @@ export default function InboxPage() {
                   {selected.status === "paused" ? (
                     <>
                       <Mail className="mr-1 h-3 w-3" />
-                      Hervatten
+                      {t("inbox.resume")}
                     </>
                   ) : (
                     <>
                       <Pause className="mr-1 h-3 w-3" />
-                      Pauzeren
+                      {t("inbox.pause")}
                     </>
                   )}
                 </Button>
@@ -395,7 +396,7 @@ export default function InboxPage() {
                     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
                       <MessageSquare className="h-8 w-8 text-neutral-300 dark:text-neutral-600" />
                       <p className="text-sm text-neutral-400">
-                        Nog geen berichten in dit gesprek.
+                        {t("inbox.noMessages")}
                       </p>
                     </div>
                   );
@@ -420,7 +421,7 @@ export default function InboxPage() {
                             }`}
                           >
                             {msg.role === "assistant"
-                              ? "Jij"
+                              ? t("inbox.you")
                               : getLeadDisplayName(selected.lead)}
                           </span>
                           <span className="text-xs text-neutral-400">
@@ -449,7 +450,7 @@ export default function InboxPage() {
             <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
               <div className="flex items-end gap-2">
                 <Textarea
-                  placeholder="Typ je antwoord..."
+                  placeholder={t("inbox.typeReply")}
                   className="bg-neutral-50 dark:bg-neutral-900"
                   rows={2}
                   value={replyText}
@@ -473,7 +474,7 @@ export default function InboxPage() {
                 </Button>
               </div>
               <p className="mt-1 text-[10px] text-neutral-400">
-                Ctrl+Enter om te versturen
+                {t("inbox.sendShortcut")}
               </p>
             </div>
           </>
@@ -482,11 +483,10 @@ export default function InboxPage() {
             <InboxIcon className="h-12 w-12 text-neutral-300 dark:text-neutral-600" />
             <div>
               <p className="font-medium text-neutral-600 dark:text-neutral-400">
-                Selecteer een gesprek
+                {t("inbox.selectConversation")}
               </p>
               <p className="text-sm text-neutral-400">
-                Kies een conversatie uit de lijst om berichten te lezen en te
-                beantwoorden.
+                {t("inbox.selectConversationDesc")}
               </p>
             </div>
           </div>
@@ -538,25 +538,25 @@ export default function InboxPage() {
             </div>
             <div className="space-y-2">
               <p className="text-xs font-medium uppercase text-neutral-500">
-                Lead status
+                {t("inbox.leadStatus")}
               </p>
               <Badge variant="secondary">{selected.lead.status}</Badge>
             </div>
             <div className="space-y-2">
               <p className="text-xs font-medium uppercase text-neutral-500">
-                Gesprek status
+                {t("inbox.conversationStatus")}
               </p>
               <Badge
                 variant="secondary"
                 className={statusBadgeColors[selected.status]}
               >
-                {statusLabels[selected.status]}
+                {t(statusKeys[selected.status])}
               </Badge>
             </div>
             {selected.intent_classification && (
               <div className="space-y-2">
                 <p className="text-xs font-medium uppercase text-neutral-500">
-                  Intentie
+                  {t("inbox.intent")}
                 </p>
                 <Badge
                   variant="secondary"
@@ -564,15 +564,14 @@ export default function InboxPage() {
                     intentColors[selected.intent_classification] || ""
                   }
                 >
-                  {intentLabels[selected.intent_classification] ||
-                    selected.intent_classification}
+                  {intentKeys[selected.intent_classification] ? t(intentKeys[selected.intent_classification]) : selected.intent_classification}
                 </Badge>
               </div>
             )}
             {selected.ai_summary && (
               <div className="space-y-2">
                 <p className="text-xs font-medium uppercase text-neutral-500">
-                  AI samenvatting
+                  {t("inbox.aiSummary")}
                 </p>
                 <p className="text-xs text-neutral-600 dark:text-neutral-400">
                   {selected.ai_summary}
@@ -587,7 +586,7 @@ export default function InboxPage() {
               >
                 <Button variant="outline" size="sm" className="w-full">
                   <ExternalLink className="mr-2 h-3 w-3" />
-                  LinkedIn profiel
+                  {t("inbox.linkedinProfile")}
                 </Button>
               </a>
             )}
@@ -596,7 +595,7 @@ export default function InboxPage() {
           <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
             <User className="h-8 w-8 text-neutral-300 dark:text-neutral-600" />
             <p className="text-xs text-neutral-400">
-              Selecteer een gesprek om lead info te bekijken.
+              {t("inbox.selectToViewLead")}
             </p>
           </div>
         )}

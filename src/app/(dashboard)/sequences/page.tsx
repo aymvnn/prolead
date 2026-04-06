@@ -49,6 +49,7 @@ import {
   Play,
   Pause,
 } from "lucide-react";
+import { useTranslation } from "@/components/language-provider";
 
 interface SequenceRow {
   id: string;
@@ -71,14 +72,16 @@ const statusColors: Record<string, string> = {
     "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
 };
 
-const statusLabels: Record<string, string> = {
-  active: "Actief",
-  draft: "Concept",
-  paused: "Gepauzeerd",
-  completed: "Voltooid",
-};
-
 export default function SequencesPage() {
+  const { t } = useTranslation();
+
+  const statusLabels: Record<string, string> = {
+    active: t("common.active"),
+    draft: t("common.draft"),
+    paused: t("common.paused"),
+    completed: t("common.completed"),
+  };
+
   const [sequences, setSequences] = useState<SequenceRow[]>([]);
   const [campaigns, setCampaigns] = useState<
     { id: string; name: string }[]
@@ -161,7 +164,7 @@ export default function SequencesPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
           <Input
             type="search"
-            placeholder="Zoek sequences..."
+            placeholder={t("sequences.search")}
             className="w-72 bg-white pl-9 dark:bg-neutral-950"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -170,20 +173,19 @@ export default function SequencesPage() {
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger render={<Button />}>
             <Plus className="mr-2 h-4 w-4" />
-            Nieuwe sequence
+            {t("sequences.new")}
           </DialogTrigger>
           <DialogContent>
             <form onSubmit={handleCreate}>
               <DialogHeader>
-                <DialogTitle>Nieuwe sequence</DialogTitle>
+                <DialogTitle>{t("sequences.new")}</DialogTitle>
                 <DialogDescription>
-                  Maak een nieuwe email sequence aan en koppel deze aan een
-                  campaign.
+                  {t("sequences.newDesc")}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="seq_name">Naam</Label>
+                  <Label htmlFor="seq_name">{t("sequences.name")}</Label>
                   <Input
                     id="seq_name"
                     placeholder="bijv. SaaS Intro + 3 Follow-ups"
@@ -195,10 +197,10 @@ export default function SequencesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Campaign</Label>
+                  <Label>{t("sequences.campaign")}</Label>
                   {campaigns.length === 0 ? (
                     <p className="text-sm text-neutral-500">
-                      Maak eerst een campaign aan via{" "}
+                      {t("sequences.noCampaigns")}{" "}
                       <Link
                         href="/campaigns/new"
                         className="text-blue-600 hover:underline"
@@ -215,7 +217,7 @@ export default function SequencesPage() {
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecteer campaign" />
+                        <SelectValue placeholder={t("sequences.selectCampaign")} />
                       </SelectTrigger>
                       <SelectContent>
                         {campaigns.map((c) => (
@@ -234,7 +236,7 @@ export default function SequencesPage() {
                   variant="outline"
                   onClick={() => setShowCreateDialog(false)}
                 >
-                  Annuleren
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   type="submit"
@@ -242,7 +244,7 @@ export default function SequencesPage() {
                     !newSequence.name.trim() || !newSequence.campaign_id
                   }
                 >
-                  Aanmaken
+                  {t("common.create")}
                 </Button>
               </DialogFooter>
             </form>
@@ -255,11 +257,11 @@ export default function SequencesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Sequence</TableHead>
-              <TableHead>Stappen</TableHead>
-              <TableHead>Campaign</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Aangemaakt</TableHead>
+              <TableHead>{t("sequences.sequence")}</TableHead>
+              <TableHead>{t("sequences.steps")}</TableHead>
+              <TableHead>{t("sequences.campaign")}</TableHead>
+              <TableHead>{t("sequences.status")}</TableHead>
+              <TableHead>{t("sequences.created")}</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
@@ -280,8 +282,8 @@ export default function SequencesPage() {
                     <GitBranch className="h-8 w-8 text-neutral-300 dark:text-neutral-600" />
                     <p>
                       {searchQuery
-                        ? "Geen sequences gevonden"
-                        : "Nog geen sequences. Maak je eerste sequence aan."}
+                        ? t("sequences.noResults")
+                        : t("sequences.empty")}
                     </p>
                   </div>
                 </TableCell>
@@ -300,7 +302,7 @@ export default function SequencesPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">
-                      {seq.steps_count} stappen
+                      {seq.steps_count} {t("sequences.stepsLabel")}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -313,7 +315,7 @@ export default function SequencesPage() {
                       </Link>
                     ) : (
                       <span className="text-sm text-neutral-400">
-                        Niet gekoppeld
+                        {t("sequences.notLinked")}
                       </span>
                     )}
                   </TableCell>
@@ -346,21 +348,21 @@ export default function SequencesPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem>
                           <Pencil className="mr-2 h-4 w-4" />
-                          Bewerken
+                          {t("common.edit")}
                         </DropdownMenuItem>
                         {seq.status === "draft" || seq.status === "paused" ? (
                           <DropdownMenuItem
                             onClick={() => updateStatus(seq.id, "active")}
                           >
                             <Play className="mr-2 h-4 w-4" />
-                            Activeren
+                            {t("campaigns.activate")}
                           </DropdownMenuItem>
                         ) : seq.status === "active" ? (
                           <DropdownMenuItem
                             onClick={() => updateStatus(seq.id, "paused")}
                           >
                             <Pause className="mr-2 h-4 w-4" />
-                            Pauzeren
+                            {t("campaigns.pause")}
                           </DropdownMenuItem>
                         ) : null}
                         <DropdownMenuSeparator />
@@ -369,7 +371,7 @@ export default function SequencesPage() {
                           className="text-red-600 dark:text-red-400"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Verwijderen
+                          {t("common.delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

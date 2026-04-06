@@ -35,13 +35,9 @@ import {
   Trash2,
   Loader2,
 } from "lucide-react";
+import { useTranslation } from "@/components/language-provider";
 
-const steps = [
-  { id: 1, label: "Naam & Instellingen", icon: Settings2 },
-  { id: 2, label: "ICP & Voice", icon: Mic },
-  { id: 3, label: "Sequence Setup", icon: GitBranch },
-  { id: 4, label: "Lead Selectie", icon: Users },
-];
+// steps moved inside component to use t()
 
 interface IcpProfile {
   id: string;
@@ -77,8 +73,16 @@ interface SequenceStep {
 
 export default function NewCampaignPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(1);
   const [saving, setSaving] = useState(false);
+
+  const steps = [
+    { id: 1, label: t("newCampaign.stepNameSettings"), icon: Settings2 },
+    { id: 2, label: t("newCampaign.stepIcpVoice"), icon: Mic },
+    { id: 3, label: t("newCampaign.stepSequenceSetup"), icon: GitBranch },
+    { id: 4, label: t("newCampaign.stepLeadSelection"), icon: Users },
+  ];
 
   // Step 1: Campaign info
   const [campaignName, setCampaignName] = useState("");
@@ -259,7 +263,7 @@ export default function NewCampaignPage() {
 
       const campaignJson = await campaignRes.json();
       if (!campaignRes.ok || !campaignJson.data) {
-        alert(`Fout bij aanmaken campaign: ${campaignJson.error || "Onbekende fout"}`);
+        alert(`${t("newCampaign.createError")}: ${campaignJson.error || t("newCampaign.unknownError")}`);
         setSaving(false);
         return;
       }
@@ -310,7 +314,7 @@ export default function NewCampaignPage() {
       // Redirect to campaigns list
       router.push("/campaigns");
     } catch {
-      alert("Er is een fout opgetreden bij het aanmaken van de campaign.");
+      alert(t("newCampaign.genericError"));
     } finally {
       setSaving(false);
     }
@@ -326,9 +330,9 @@ export default function NewCampaignPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-xl font-bold">Nieuwe campaign</h1>
+          <h1 className="text-xl font-bold">{t("campaigns.new")}</h1>
           <p className="text-sm text-neutral-500">
-            Stel je outreach campaign in via de onderstaande stappen.
+            {t("newCampaign.subtitle")}
           </p>
         </div>
       </div>
@@ -372,14 +376,14 @@ export default function NewCampaignPage() {
       {currentStep === 1 && (
         <Card className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
           <CardHeader>
-            <CardTitle>Naam & Instellingen</CardTitle>
+            <CardTitle>{t("newCampaign.stepNameSettings")}</CardTitle>
             <CardDescription>
-              Geef je campaign een naam en stel de basisinstellingen in.
+              {t("newCampaign.stepNameSettingsDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="campaign-name">Campaign naam *</Label>
+              <Label htmlFor="campaign-name">{t("newCampaign.campaignName")} *</Label>
               <Input
                 id="campaign-name"
                 placeholder="bijv. Q2 SaaS Founders Outreach"
@@ -390,11 +394,11 @@ export default function NewCampaignPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="campaign-description">
-                Beschrijving (optioneel)
+                {t("newCampaign.descriptionOptional")}
               </Label>
               <Textarea
                 id="campaign-description"
-                placeholder="Beschrijf het doel van deze campaign..."
+                placeholder={t("newCampaign.descriptionPlaceholder")}
                 className="bg-white dark:bg-neutral-950"
                 value={campaignDescription}
                 onChange={(e) => setCampaignDescription(e.target.value)}
@@ -402,7 +406,7 @@ export default function NewCampaignPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Verzendschema</Label>
+                <Label>{t("newCampaign.sendSchedule")}</Label>
                 <Select
                   value={sendSchedule}
                   onValueChange={(v) => v && setSendSchedule(v)}
@@ -412,16 +416,16 @@ export default function NewCampaignPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="business">
-                      Kantooruren (9-17)
+                      {t("newCampaign.businessHours")}
                     </SelectItem>
-                    <SelectItem value="morning">Ochtend (7-12)</SelectItem>
-                    <SelectItem value="afternoon">Middag (12-18)</SelectItem>
-                    <SelectItem value="custom">Aangepast</SelectItem>
+                    <SelectItem value="morning">{t("newCampaign.morning")}</SelectItem>
+                    <SelectItem value="afternoon">{t("newCampaign.afternoon")}</SelectItem>
+                    <SelectItem value="custom">{t("newCampaign.custom")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Tijdzone</Label>
+                <Label>{t("campaignDetail.timezone")}</Label>
                 <Select
                   value={timezone}
                   onValueChange={(v) => v && setTimezone(v)}
@@ -439,7 +443,7 @@ export default function NewCampaignPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Max emails per dag</Label>
+              <Label>{t("newCampaign.maxEmailsPerDay")}</Label>
               <Input
                 type="number"
                 value={maxEmailsPerDay}
@@ -455,9 +459,9 @@ export default function NewCampaignPage() {
       {currentStep === 2 && (
         <Card className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
           <CardHeader>
-            <CardTitle>ICP & Voice Profile</CardTitle>
+            <CardTitle>{t("newCampaign.stepIcpVoice")}</CardTitle>
             <CardDescription>
-              Koppel een ICP profiel en voice profile aan deze campaign.
+              {t("newCampaign.stepIcpVoiceDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -465,18 +469,18 @@ export default function NewCampaignPage() {
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
                 <span className="ml-2 text-sm text-neutral-500">
-                  Profielen laden...
+                  {t("newCampaign.loadingProfiles")}
                 </span>
               </div>
             ) : (
               <>
                 <div className="space-y-3">
-                  <Label>ICP Profiel (optioneel)</Label>
+                  <Label>{t("newCampaign.icpProfileOptional")}</Label>
                   {icpProfiles.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-neutral-300 p-4 text-center text-sm text-neutral-500 dark:border-neutral-700">
-                      Geen ICP profielen gevonden.{" "}
+                      {t("newCampaign.noIcpProfiles")}{" "}
                       <Link href="/icp" className="text-blue-600 underline">
-                        Maak er een aan.
+                        {t("newCampaign.createOne")}
                       </Link>
                     </div>
                   ) : (
@@ -502,7 +506,7 @@ export default function NewCampaignPage() {
                                 variant="secondary"
                                 className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                               >
-                                Actief
+                                {t("common.active")}
                               </Badge>
                             )}
                           </div>
@@ -516,11 +520,10 @@ export default function NewCampaignPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <Label>Voice Profile (optioneel)</Label>
+                  <Label>{t("newCampaign.voiceProfileOptional")}</Label>
                   {voiceProfiles.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-neutral-300 p-4 text-center text-sm text-neutral-500 dark:border-neutral-700">
-                      Geen voice profielen gevonden. Deze kun je later
-                      toevoegen.
+                      {t("newCampaign.noVoiceProfiles")}
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -557,9 +560,9 @@ export default function NewCampaignPage() {
       {currentStep === 3 && (
         <Card className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
           <CardHeader>
-            <CardTitle>Sequence Setup</CardTitle>
+            <CardTitle>{t("newCampaign.stepSequenceSetup")}</CardTitle>
             <CardDescription>
-              Definieer de stappen voor je outreach sequence.
+              {t("newCampaign.stepSequenceSetupDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -579,7 +582,7 @@ export default function NewCampaignPage() {
                         updateSequenceStep(index, "label", e.target.value)
                       }
                       className="flex-1 bg-white dark:bg-neutral-950"
-                      placeholder="Stap naam"
+                      placeholder={t("newCampaign.stepName")}
                     />
                     <Select
                       value={step.channel}
@@ -597,7 +600,7 @@ export default function NewCampaignPage() {
                     </Select>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-neutral-500">Wacht</span>
+                    <span className="text-neutral-500">{t("newCampaign.wait")}</span>
                     <Input
                       type="number"
                       value={step.delay_days}
@@ -611,7 +614,7 @@ export default function NewCampaignPage() {
                       className="w-16 bg-white dark:bg-neutral-950"
                       min={0}
                     />
-                    <span className="text-neutral-500">dagen</span>
+                    <span className="text-neutral-500">{t("newCampaign.days")}</span>
                     <Input
                       type="number"
                       value={step.delay_hours}
@@ -626,7 +629,7 @@ export default function NewCampaignPage() {
                       min={0}
                       max={23}
                     />
-                    <span className="text-neutral-500">uren</span>
+                    <span className="text-neutral-500">{t("newCampaign.hours")}</span>
                   </div>
                 </div>
                 <Badge variant="secondary">
@@ -650,7 +653,7 @@ export default function NewCampaignPage() {
               onClick={addSequenceStep}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Stap toevoegen
+              {t("sequences.addStep")}
             </Button>
           </CardContent>
         </Card>
@@ -660,10 +663,9 @@ export default function NewCampaignPage() {
       {currentStep === 4 && (
         <Card className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
           <CardHeader>
-            <CardTitle>Lead Selectie</CardTitle>
+            <CardTitle>{t("newCampaign.stepLeadSelection")}</CardTitle>
             <CardDescription>
-              Kies welke leads je aan deze campaign wilt toevoegen.
-              Je kunt ook later leads toevoegen.
+              {t("newCampaign.stepLeadSelectionDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -671,7 +673,7 @@ export default function NewCampaignPage() {
             <div className="flex items-center gap-3">
               <div className="relative flex-1">
                 <Input
-                  placeholder="Zoek op naam, email of bedrijf..."
+                  placeholder={t("newCampaign.searchPlaceholder")}
                   className="bg-white dark:bg-neutral-950"
                   value={leadSearch}
                   onChange={(e) => setLeadSearch(e.target.value)}
@@ -685,17 +687,17 @@ export default function NewCampaignPage() {
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alle statussen</SelectItem>
-                  <SelectItem value="new">Nieuw</SelectItem>
-                  <SelectItem value="researched">Geresearcht</SelectItem>
-                  <SelectItem value="contacted">Gecontacteerd</SelectItem>
-                  <SelectItem value="replied">Gereageerd</SelectItem>
-                  <SelectItem value="interested">Geinteresseerd</SelectItem>
+                  <SelectItem value="all">{t("leads.allStatuses")}</SelectItem>
+                  <SelectItem value="new">{t("status.new")}</SelectItem>
+                  <SelectItem value="researched">{t("status.researched")}</SelectItem>
+                  <SelectItem value="contacted">{t("status.contacted")}</SelectItem>
+                  <SelectItem value="replied">{t("status.replied")}</SelectItem>
+                  <SelectItem value="interested">{t("status.interested")}</SelectItem>
                 </SelectContent>
               </Select>
               <Input
                 type="number"
-                placeholder="Min ICP score"
+                placeholder={t("newCampaign.minIcpScore")}
                 className="w-32 bg-white dark:bg-neutral-950"
                 value={minScore}
                 onChange={(e) => setMinScore(e.target.value)}
@@ -707,13 +709,13 @@ export default function NewCampaignPage() {
             {/* Selection summary */}
             <div className="flex items-center justify-between rounded-lg bg-neutral-50 px-4 py-2 dark:bg-neutral-900">
               <span className="text-sm text-neutral-600 dark:text-neutral-400">
-                {selectedLeadIds.size} van {leads.length} leads geselecteerd
+                {selectedLeadIds.size} {t("newCampaign.of")} {leads.length} {t("newCampaign.leadsSelected")}
               </span>
               {leads.length > 0 && (
                 <Button variant="ghost" size="sm" onClick={toggleAll}>
                   {selectedLeadIds.size === leads.length
-                    ? "Deselecteer alles"
-                    : "Selecteer alles"}
+                    ? t("newCampaign.deselectAll")
+                    : t("newCampaign.selectAll")}
                 </Button>
               )}
             </div>
@@ -723,17 +725,17 @@ export default function NewCampaignPage() {
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
                 <span className="ml-2 text-sm text-neutral-500">
-                  Leads laden...
+                  {t("newCampaign.loadingLeads")}
                 </span>
               </div>
             ) : leads.length === 0 ? (
               <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-8 text-center dark:border-neutral-700 dark:bg-neutral-900">
                 <Users className="mx-auto mb-3 h-8 w-8 text-neutral-400" />
                 <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                  Geen leads gevonden
+                  {t("leads.noLeads")}
                 </p>
                 <p className="mt-1 text-xs text-neutral-500">
-                  Pas de filters aan of voeg eerst leads toe.
+                  {t("newCampaign.adjustFilters")}
                 </p>
               </div>
             ) : (
@@ -792,14 +794,14 @@ export default function NewCampaignPage() {
           disabled={currentStep === 1}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Vorige
+          {t("newCampaign.previous")}
         </Button>
         {currentStep < 4 ? (
           <Button
             onClick={() => setCurrentStep(Math.min(4, currentStep + 1))}
             disabled={!canProceed()}
           >
-            Volgende
+            {t("newCampaign.next")}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         ) : (
@@ -807,12 +809,12 @@ export default function NewCampaignPage() {
             {saving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Aanmaken...
+                {t("newCampaign.creating")}
               </>
             ) : (
               <>
                 <Check className="mr-2 h-4 w-4" />
-                Campaign aanmaken
+                {t("newCampaign.createCampaign")}
               </>
             )}
           </Button>

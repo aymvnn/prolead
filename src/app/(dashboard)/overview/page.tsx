@@ -28,34 +28,35 @@ import {
   Video,
 } from "lucide-react";
 import Link from "next/link";
+import { useTranslation } from "@/components/language-provider";
 
 type MeetingWithLead = Meeting & {
   lead: { first_name: string; last_name: string; company: string } | null;
 };
 
-const eventTypeLabels: Record<string, string> = {
-  email_sent: "Email verstuurd",
-  email_opened: "Email geopend",
-  email_replied: "Reply ontvangen",
-  email_bounced: "Email bounced",
-  email_clicked: "Link geklikt",
-  lead_created: "Lead aangemaakt",
-  lead_enriched: "Lead verrijkt",
-  lead_updated: "Lead bijgewerkt",
-  meeting_booked: "Meeting geboekt",
-  meeting_completed: "Meeting voltooid",
-  meeting_cancelled: "Meeting geannuleerd",
-  campaign_started: "Campagne gestart",
-  campaign_paused: "Campagne gepauzeerd",
-  campaign_completed: "Campagne voltooid",
-  sequence_started: "Sequence gestart",
+const eventTypeKeys: Record<string, string> = {
+  email_sent: "event.email_sent",
+  email_opened: "event.email_opened",
+  email_replied: "event.email_replied",
+  email_bounced: "event.email_bounced",
+  email_clicked: "event.email_clicked",
+  lead_created: "event.lead_created",
+  lead_enriched: "event.lead_enriched",
+  lead_updated: "event.lead_updated",
+  meeting_booked: "event.meeting_booked",
+  meeting_completed: "event.meeting_completed",
+  meeting_cancelled: "event.meeting_cancelled",
+  campaign_started: "event.campaign_started",
+  campaign_paused: "event.campaign_paused",
+  campaign_completed: "event.campaign_completed",
+  sequence_started: "event.sequence_started",
 };
 
-const meetingStatusLabels: Record<MeetingStatus, string> = {
-  scheduled: "Gepland",
-  completed: "Voltooid",
-  cancelled: "Geannuleerd",
-  no_show: "Niet verschenen",
+const meetingStatusKeys: Record<MeetingStatus, string> = {
+  scheduled: "meetings.scheduled",
+  completed: "meetings.completed",
+  cancelled: "meetings.cancelled",
+  no_show: "meetings.noShow",
 };
 
 const meetingStatusColors: Record<MeetingStatus, string> = {
@@ -70,6 +71,7 @@ const meetingStatusColors: Record<MeetingStatus, string> = {
 };
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [totalLeads, setTotalLeads] = useState(0);
   const [emailsSent, setEmailsSent] = useState(0);
@@ -208,7 +210,7 @@ export default function DashboardPage() {
 
   const statCards = [
     {
-      label: "Totale Leads",
+      label: t("overview.totalLeads"),
       value: totalLeads.toLocaleString("nl-NL"),
       icon: Users,
       color: "text-blue-600",
@@ -216,7 +218,7 @@ export default function DashboardPage() {
       borderColor: "border-t-blue-500",
     },
     {
-      label: "Emails Verstuurd",
+      label: t("overview.emailsSent"),
       value: emailsSent.toLocaleString("nl-NL"),
       icon: Mail,
       color: "text-purple-600",
@@ -224,7 +226,7 @@ export default function DashboardPage() {
       borderColor: "border-t-purple-500",
     },
     {
-      label: "Open Rate",
+      label: t("overview.openRate"),
       value: `${openRate}%`,
       icon: Eye,
       color: "text-amber-600",
@@ -232,7 +234,7 @@ export default function DashboardPage() {
       borderColor: "border-t-amber-500",
     },
     {
-      label: "Meetings Geboekt",
+      label: t("overview.meetingsBooked"),
       value: meetingsBooked.toLocaleString("nl-NL"),
       icon: Calendar,
       color: "text-teal-600",
@@ -245,7 +247,7 @@ export default function DashboardPage() {
     return (
       <div className="flex items-center justify-center py-32">
         <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
-        <span className="ml-3 text-neutral-500">Dashboard laden...</span>
+        <span className="ml-3 text-neutral-500">{t("overview.loading")}</span>
       </div>
     );
   }
@@ -255,7 +257,7 @@ export default function DashboardPage() {
       {/* Welcome Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Welkom bij PROLEAD
+          {t("overview.title")}
         </h1>
         <p className="mt-1 text-sm capitalize text-neutral-500">{today}</p>
       </div>
@@ -294,17 +296,17 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Activity className="h-4 w-4 text-primary" />
-              Recente Activiteit
+              {t("overview.recentActivity")}
             </CardTitle>
             <CardDescription>
-              Laatste 10 events in het platform.
+              {t("overview.recentActivityDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {recentEvents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 text-neutral-400">
                 <Activity className="mb-2 h-8 w-8" />
-                <p className="text-sm">Nog geen activiteit geregistreerd.</p>
+                <p className="text-sm">{t("overview.noActivity")}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -318,7 +320,7 @@ export default function DashboardPage() {
                         {event.entity_type}
                       </Badge>
                       <span className="text-sm">
-                        {eventTypeLabels[event.event_type] || event.event_type}
+                        {eventTypeKeys[event.event_type] ? t(eventTypeKeys[event.event_type]) : event.event_type}
                       </span>
                     </div>
                     <span className="text-xs text-neutral-400">
@@ -341,20 +343,20 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Megaphone className="h-4 w-4 text-primary" />
-              Actieve Campagnes
+              {t("overview.activeCampaigns")}
             </CardTitle>
-            <CardDescription>Campagnes die nu actief zijn.</CardDescription>
+            <CardDescription>{t("overview.activeCampaignsDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             {activeCampaigns.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 text-neutral-400">
                 <Megaphone className="mb-2 h-8 w-8" />
-                <p className="text-sm">Geen actieve campagnes.</p>
+                <p className="text-sm">{t("overview.noCampaigns")}</p>
                 <Link
                   href="/campaigns"
                   className="mt-2 text-xs text-neutral-500 underline hover:text-neutral-700 dark:hover:text-neutral-300"
                 >
-                  Campagne starten
+                  {t("overview.startCampaign")}
                 </Link>
               </div>
             ) : (
@@ -373,7 +375,7 @@ export default function DashboardPage() {
                           variant="secondary"
                           className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                         >
-                          Actief
+                          {t("common.active")}
                         </Badge>
                       </div>
                       {stats && (
@@ -408,17 +410,17 @@ export default function DashboardPage() {
             <div>
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Clock className="h-4 w-4 text-primary" />
-                Aankomende Meetings
+                {t("overview.upcomingMeetings")}
               </CardTitle>
               <CardDescription>
-                De eerstvolgende 5 geplande meetings.
+                {t("overview.upcomingMeetingsDesc")}
               </CardDescription>
             </div>
             <Link
               href="/meetings"
               className="text-xs text-neutral-500 underline hover:text-neutral-700 dark:hover:text-neutral-300"
             >
-              Alle meetings
+              {t("overview.allMeetings")}
             </Link>
           </div>
         </CardHeader>
@@ -426,7 +428,7 @@ export default function DashboardPage() {
           {upcomingMeetings.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-neutral-400">
               <Calendar className="mb-2 h-8 w-8" />
-              <p className="text-sm">Geen aankomende meetings.</p>
+              <p className="text-sm">{t("overview.noMeetings")}</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -446,7 +448,7 @@ export default function DashboardPage() {
                       <p className="text-xs text-neutral-500">
                         {meeting.lead
                           ? `${meeting.lead.first_name} ${meeting.lead.last_name} - ${meeting.lead.company}`
-                          : "Onbekende lead"}
+                          : t("overview.unknownLead")}
                       </p>
                     </div>
                   </div>
@@ -488,7 +490,7 @@ export default function DashboardPage() {
                       variant="secondary"
                       className={meetingStatusColors[meeting.status]}
                     >
-                      {meetingStatusLabels[meeting.status]}
+                      {t(meetingStatusKeys[meeting.status])}
                     </Badge>
                   </div>
                 </div>

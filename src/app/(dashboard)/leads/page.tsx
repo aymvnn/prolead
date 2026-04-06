@@ -53,6 +53,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
+import { useTranslation } from "@/components/language-provider";
 
 const statusColors: Record<LeadStatus, string> = {
   new: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
@@ -76,20 +77,21 @@ const statusColors: Record<LeadStatus, string> = {
     "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
 };
 
-const statusLabels: Record<LeadStatus, string> = {
-  new: "Nieuw",
-  researched: "Onderzocht",
-  contacted: "Benaderd",
-  replied: "Gereageerd",
-  interested: "Ge\u00EFnteresseerd",
-  meeting_booked: "Meeting",
-  closed_won: "Gewonnen",
-  closed_lost: "Verloren",
-  unsubscribed: "Afgemeld",
-  bounced: "Bounced",
+const statusKeys: Record<LeadStatus, string> = {
+  new: "status.new",
+  researched: "status.researched",
+  contacted: "status.contacted",
+  replied: "status.replied",
+  interested: "status.interested",
+  meeting_booked: "status.meeting_booked",
+  closed_won: "status.closed_won",
+  closed_lost: "status.closed_lost",
+  unsubscribed: "status.unsubscribed",
+  bounced: "status.bounced",
 };
 
 export default function LeadsPage() {
+  const { t } = useTranslation();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -328,7 +330,7 @@ export default function LeadsPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
             <Input
               type="search"
-              placeholder="Zoek leads..."
+              placeholder={t("leads.search")}
               className="w-72 bg-white pl-9 dark:bg-neutral-950"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -342,10 +344,10 @@ export default function LeadsPage() {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Alle statussen</SelectItem>
-              {Object.entries(statusLabels).map(([value, label]) => (
+              <SelectItem value="all">{t("leads.allStatuses")}</SelectItem>
+              {Object.entries(statusKeys).map(([value, key]) => (
                 <SelectItem key={value} value={value}>
-                  {label}
+                  {t(key)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -354,31 +356,31 @@ export default function LeadsPage() {
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={loadLeads}>
             <RefreshCw className="mr-2 h-4 w-4" />
-            Vernieuwen
+            {t("leads.refresh")}
           </Button>
           <Link href="/leads/import">
             <Button variant="outline">
               <Upload className="mr-2 h-4 w-4" />
-              Importeren
+              {t("leads.import")}
             </Button>
           </Link>
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger render={<Button />}>
               <Plus className="mr-2 h-4 w-4" />
-              Lead toevoegen
+              {t("leads.addLead")}
             </DialogTrigger>
             <DialogContent>
               <form onSubmit={handleAddLead}>
                 <DialogHeader>
-                  <DialogTitle>Nieuwe lead toevoegen</DialogTitle>
+                  <DialogTitle>{t("leads.addLeadTitle")}</DialogTitle>
                   <DialogDescription>
-                    Voer de gegevens van de lead in.
+                    {t("leads.addLeadDesc")}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="first_name">Voornaam</Label>
+                      <Label htmlFor="first_name">{t("leads.firstName")}</Label>
                       <Input
                         id="first_name"
                         value={newLead.first_name}
@@ -392,7 +394,7 @@ export default function LeadsPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="last_name">Achternaam</Label>
+                      <Label htmlFor="last_name">{t("leads.lastName")}</Label>
                       <Input
                         id="last_name"
                         value={newLead.last_name}
@@ -419,7 +421,7 @@ export default function LeadsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="company">Bedrijf</Label>
+                    <Label htmlFor="company">{t("leads.company")}</Label>
                     <Input
                       id="company"
                       value={newLead.company}
@@ -430,7 +432,7 @@ export default function LeadsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="title">Functie</Label>
+                    <Label htmlFor="title">{t("leads.jobTitle")}</Label>
                     <Input
                       id="title"
                       value={newLead.title}
@@ -460,9 +462,9 @@ export default function LeadsPage() {
                     variant="outline"
                     onClick={() => setShowAddDialog(false)}
                   >
-                    Annuleren
+                    {t("common.cancel")}
                   </Button>
-                  <Button type="submit">Toevoegen</Button>
+                  <Button type="submit">{t("leads.add")}</Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -474,24 +476,24 @@ export default function LeadsPage() {
       {hasSelection && (
         <div className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900">
           <span className="text-sm font-medium">
-            {selectedIds.size} geselecteerd
+            {selectedIds.size} {t("leads.selected")}
           </span>
           <div className="h-4 w-px bg-neutral-300 dark:bg-neutral-700" />
           <Dialog open={showTagDialog} onOpenChange={setShowTagDialog}>
             <DialogTrigger render={<Button variant="outline" size="sm" />}>
               <Tag className="mr-2 h-3.5 w-3.5" />
-              Tag toevoegen
+              {t("leads.addTag")}
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Tag toevoegen</DialogTitle>
+                <DialogTitle>{t("leads.addTag")}</DialogTitle>
                 <DialogDescription>
-                  Voeg een tag toe aan {selectedIds.size} geselecteerde lead(s).
+                  {t("leads.addTagDesc").replace("{count}", String(selectedIds.size))}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="tag">Tag naam</Label>
+                  <Label htmlFor="tag">{t("leads.tagName")}</Label>
                   <Input
                     id="tag"
                     placeholder="bijv. Priority, Follow-up, VIP"
@@ -511,17 +513,17 @@ export default function LeadsPage() {
                   variant="outline"
                   onClick={() => setShowTagDialog(false)}
                 >
-                  Annuleren
+                  {t("common.cancel")}
                 </Button>
                 <Button onClick={handleBulkTag} disabled={!bulkTag.trim()}>
-                  Toevoegen
+                  {t("leads.add")}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="mr-2 h-3.5 w-3.5" />
-            Exporteren
+            {t("leads.export")}
           </Button>
           <Button
             variant="outline"
@@ -531,7 +533,7 @@ export default function LeadsPage() {
             className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950"
           >
             <Trash2 className="mr-2 h-3.5 w-3.5" />
-            {deleting ? "Verwijderen..." : "Verwijderen"}
+            {deleting ? t("leads.deleting") : t("leads.delete")}
           </Button>
           <div className="flex-1" />
           <Button
@@ -540,7 +542,7 @@ export default function LeadsPage() {
             onClick={() => setSelectedIds(new Set())}
           >
             <X className="mr-1 h-3.5 w-3.5" />
-            Deselecteren
+            {t("leads.deselect")}
           </Button>
         </div>
       )}
@@ -549,27 +551,27 @@ export default function LeadsPage() {
       <div className="grid grid-cols-5 gap-4">
         {[
           {
-            label: "Totaal",
+            label: t("leads.total"),
             value: leads.length,
             color: "text-neutral-900 dark:text-white",
           },
           {
-            label: "Nieuw",
+            label: t("status.new"),
             value: leads.filter((l) => l.status === "new").length,
             color: "text-blue-600",
           },
           {
-            label: "Benaderd",
+            label: t("status.contacted"),
             value: leads.filter((l) => l.status === "contacted").length,
             color: "text-yellow-600",
           },
           {
-            label: "Gereageerd",
+            label: t("status.replied"),
             value: leads.filter((l) => l.status === "replied").length,
             color: "text-green-600",
           },
           {
-            label: "Meetings",
+            label: t("status.meeting_booked"),
             value: leads.filter((l) => l.status === "meeting_booked").length,
             color: "text-teal-600",
           },
@@ -598,12 +600,12 @@ export default function LeadsPage() {
                   onCheckedChange={toggleSelectAll}
                 />
               </TableHead>
-              <TableHead>Naam</TableHead>
-              <TableHead>Bedrijf</TableHead>
-              <TableHead>Functie</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>ICP Score</TableHead>
-              <TableHead>Laatst actief</TableHead>
+              <TableHead>{t("leads.name")}</TableHead>
+              <TableHead>{t("leads.company")}</TableHead>
+              <TableHead>{t("leads.jobTitle")}</TableHead>
+              <TableHead>{t("leads.status")}</TableHead>
+              <TableHead>{t("leads.icpScore")}</TableHead>
+              <TableHead>{t("leads.lastActive")}</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
@@ -621,8 +623,8 @@ export default function LeadsPage() {
                   className="h-32 text-center text-neutral-500"
                 >
                   {searchQuery
-                    ? "Geen leads gevonden voor deze zoekopdracht"
-                    : "Nog geen leads. Voeg je eerste lead toe of importeer een CSV."}
+                    ? t("leads.noLeadsSearch")
+                    : t("leads.noLeadsEmpty")}
                 </TableCell>
               </TableRow>
             ) : (
@@ -667,7 +669,7 @@ export default function LeadsPage() {
                       variant="secondary"
                       className={statusColors[lead.status]}
                     >
-                      {statusLabels[lead.status]}
+                      {t(statusKeys[lead.status])}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -709,13 +711,13 @@ export default function LeadsPage() {
                         <DropdownMenuItem
                           render={<Link href={`/leads/${lead.id}`} />}
                         >
-                          Bekijken
+                          {t("leads.view")}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleAIResearch(lead.id)}
                         >
                           <Sparkles className="mr-2 h-4 w-4" />
-                          AI Research
+                          {t("leads.research")}
                         </DropdownMenuItem>
                         {lead.linkedin_url && (
                           <DropdownMenuItem
@@ -737,7 +739,7 @@ export default function LeadsPage() {
                           className="text-red-600 dark:text-red-400"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Verwijderen
+                          {t("leads.delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

@@ -32,10 +32,12 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
+import { useTranslation } from "@/components/language-provider";
 
 type DateRange = "7d" | "30d" | "90d" | "all";
 
 export default function AnalyticsPage() {
+  const { t } = useTranslation();
   const [range, setRange] = useState<DateRange>("30d");
   const [loading, setLoading] = useState(true);
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
@@ -176,28 +178,28 @@ export default function AnalyticsPage() {
 
   const stats = [
     {
-      label: "Totale leads",
+      label: t("analytics.totalLeads"),
       value: leads.length.toLocaleString("nl-NL"),
       change: null as number | null,
       icon: Users,
       color: "text-blue-600",
     },
     {
-      label: "Emails verstuurd",
+      label: t("analytics.emailsSent"),
       value: displayEmailsSent.toLocaleString("nl-NL"),
       change: calcChange("emails_sent"),
       icon: Mail,
       color: "text-purple-600",
     },
     {
-      label: "Reply rate",
+      label: t("analytics.replyRate"),
       value: `${replyRate}%`,
       change: calcChange("emails_replied"),
       icon: Reply,
       color: "text-green-600",
     },
     {
-      label: "Meetings geboekt",
+      label: t("analytics.meetingsBooked"),
       value: displayMeetings.toLocaleString("nl-NL"),
       change: calcChange("meetings_booked"),
       icon: Calendar,
@@ -206,16 +208,16 @@ export default function AnalyticsPage() {
   ];
 
   const statusLabels: Record<string, string> = {
-    new: "Nieuw",
-    researched: "Onderzocht",
-    contacted: "Benaderd",
-    replied: "Gereageerd",
-    interested: "Geinteresseerd",
-    meeting_booked: "Meeting",
-    closed_won: "Gewonnen",
-    closed_lost: "Verloren",
-    unsubscribed: "Afgemeld",
-    bounced: "Bounced",
+    new: t("status.new"),
+    researched: t("status.researched"),
+    contacted: t("status.contacted"),
+    replied: t("status.replied"),
+    interested: t("status.interested"),
+    meeting_booked: t("status.meeting_booked"),
+    closed_won: t("status.closed_won"),
+    closed_lost: t("status.closed_lost"),
+    unsubscribed: t("status.unsubscribed"),
+    bounced: t("status.bounced"),
   };
 
   const statusColors: Record<string, string> = {
@@ -232,16 +234,16 @@ export default function AnalyticsPage() {
   };
 
   const eventTypeLabels: Record<string, string> = {
-    email_sent: "Email verstuurd",
-    email_opened: "Email geopend",
-    email_replied: "Reply ontvangen",
-    email_bounced: "Email bounced",
-    lead_created: "Lead aangemaakt",
-    lead_enriched: "Lead verrijkt",
-    meeting_booked: "Meeting geboekt",
-    meeting_completed: "Meeting voltooid",
-    campaign_started: "Campagne gestart",
-    campaign_paused: "Campagne gepauzeerd",
+    email_sent: t("event.email_sent"),
+    email_opened: t("event.email_opened"),
+    email_replied: t("event.email_replied"),
+    email_bounced: t("event.email_bounced"),
+    lead_created: t("event.lead_created"),
+    lead_enriched: t("event.lead_enriched"),
+    meeting_booked: t("event.meeting_booked"),
+    meeting_completed: t("event.meeting_completed"),
+    campaign_started: t("event.campaign_started"),
+    campaign_paused: t("event.campaign_paused"),
   };
 
   // Bar chart data: group daily stats by week for display
@@ -284,7 +286,7 @@ export default function AnalyticsPage() {
             Analytics
           </h1>
           <p className="text-sm text-neutral-500">
-            Overzicht van je outreach prestaties.
+            {t("analytics.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -296,15 +298,15 @@ export default function AnalyticsPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="7d">Afgelopen 7 dagen</SelectItem>
-              <SelectItem value="30d">Afgelopen 30 dagen</SelectItem>
-              <SelectItem value="90d">Afgelopen 90 dagen</SelectItem>
-              <SelectItem value="all">Alles</SelectItem>
+              <SelectItem value="7d">{t("analytics.last7days")}</SelectItem>
+              <SelectItem value="30d">{t("analytics.last30days")}</SelectItem>
+              <SelectItem value="90d">{t("analytics.last90days")}</SelectItem>
+              <SelectItem value="all">{t("analytics.all")}</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" onClick={() => loadData()}>
             <RefreshCw className="mr-2 h-4 w-4" />
-            Vernieuwen
+            {t("analytics.refresh")}
           </Button>
         </div>
       </div>
@@ -312,7 +314,7 @@ export default function AnalyticsPage() {
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
-          <span className="ml-3 text-neutral-500">Laden...</span>
+          <span className="ml-3 text-neutral-500">{t("analytics.loading")}</span>
         </div>
       ) : (
         <>
@@ -363,16 +365,16 @@ export default function AnalyticsPage() {
             <Card className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
               <CardHeader>
                 <CardTitle className="text-sm">
-                  Emails verstuurd per week
+                  {t("analytics.emailsPerWeek")}
                 </CardTitle>
                 <CardDescription>
-                  Verloop van het aantal verzonden emails.
+                  {t("analytics.emailsPerWeekDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {weeklyBars.length === 0 ? (
                   <div className="flex h-48 items-center justify-center text-sm text-neutral-400">
-                    Geen data voor deze periode.
+                    {t("analytics.noData")}
                   </div>
                 ) : (
                   <>
@@ -408,16 +410,16 @@ export default function AnalyticsPage() {
             <Card className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
               <CardHeader>
                 <CardTitle className="text-sm">
-                  Lead status verdeling
+                  {t("analytics.leadStatusDist")}
                 </CardTitle>
                 <CardDescription>
-                  Aantal leads per status.
+                  {t("analytics.leadStatusDistDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {Object.keys(leadStatusCounts).length === 0 ? (
                   <div className="flex h-48 items-center justify-center text-sm text-neutral-400">
-                    Geen leads gevonden.
+                    {t("analytics.noLeads")}
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -451,28 +453,28 @@ export default function AnalyticsPage() {
           {/* Funnel */}
           <Card className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
             <CardHeader>
-              <CardTitle className="text-sm">Conversie funnel</CardTitle>
+              <CardTitle className="text-sm">{t("analytics.conversionFunnel")}</CardTitle>
               <CardDescription>
-                Van lead tot meeting -- je complete funnel.
+                {t("analytics.conversionFunnelDesc")}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {[
                   {
-                    label: "Totale leads",
+                    label: t("analytics.totalLeads"),
                     value: leads.length,
                     pct: 100,
                     color: "bg-blue-500",
                   },
                   {
-                    label: "Emails verstuurd",
+                    label: t("analytics.emailsSent"),
                     value: displayEmailsSent,
                     pct: 100,
                     color: "bg-blue-400",
                   },
                   {
-                    label: "Emails geopend",
+                    label: t("analytics.emailsOpened"),
                     value: displayOpened,
                     pct: displayEmailsSent > 0
                       ? Number(openRate)
@@ -480,7 +482,7 @@ export default function AnalyticsPage() {
                     color: "bg-purple-500",
                   },
                   {
-                    label: "Replies ontvangen",
+                    label: t("analytics.repliesReceived"),
                     value: displayReplied,
                     pct: displayEmailsSent > 0
                       ? Number(replyRate)
@@ -488,7 +490,7 @@ export default function AnalyticsPage() {
                     color: "bg-green-500",
                   },
                   {
-                    label: "Meetings geboekt",
+                    label: t("analytics.meetingsBooked"),
                     value: displayMeetings,
                     pct: displayEmailsSent > 0
                       ? Number(
@@ -528,15 +530,15 @@ export default function AnalyticsPage() {
           {/* Recent Activity */}
           <Card className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
             <CardHeader>
-              <CardTitle className="text-sm">Recente activiteit</CardTitle>
+              <CardTitle className="text-sm">{t("analytics.recentActivity")}</CardTitle>
               <CardDescription>
-                Laatste events uit analytics_events.
+                {t("analytics.recentActivityDesc")}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {recentEvents.length === 0 ? (
                 <p className="py-8 text-center text-sm text-neutral-400">
-                  Nog geen activiteit geregistreerd.
+                  {t("analytics.noActivity")}
                 </p>
               ) : (
                 <div className="space-y-2">

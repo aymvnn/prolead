@@ -36,8 +36,10 @@ import {
   Info,
   ArrowRight,
 } from "lucide-react";
+import { useTranslation } from "@/components/language-provider";
 
 export default function LeadPrompterPage() {
+  const { t } = useTranslation();
   const [profiles, setProfiles] = useState<ICPProfile[]>([]);
   const [campaigns, setCampaigns] = useState<
     { id: string; name: string; status: string }[]
@@ -192,11 +194,10 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
       <div>
         <h1 className="flex items-center gap-2 text-xl font-bold">
           <Sparkles className="h-5 w-5 text-primary" />
-          Lead Prompter
+          {t("prompter.title")}
         </h1>
         <p className="text-sm text-neutral-500">
-          Genereer een kant-en-klare prompt voor Claude om leads te zoeken.
-          Kopieer de prompt en plak hem in Claude Cowork.
+          {t("prompter.desc")}
         </p>
       </div>
 
@@ -206,35 +207,35 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
           <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
           <div className="space-y-1 text-sm">
             <p className="font-medium text-blue-900 dark:text-blue-300">
-              Hoe het werkt
+              {t("prompter.howItWorks")}
             </p>
             <div className="flex flex-wrap items-center gap-2 text-blue-800 dark:text-blue-400">
               <Badge
                 variant="secondary"
                 className="bg-primary/10 text-primary"
               >
-                1. Configureer
+                {t("prompter.step1")}
               </Badge>
               <ArrowRight className="h-3 w-3" />
               <Badge
                 variant="secondary"
                 className="bg-primary/10 text-primary"
               >
-                2. Kopieer prompt
+                {t("prompter.step2")}
               </Badge>
               <ArrowRight className="h-3 w-3" />
               <Badge
                 variant="secondary"
                 className="bg-primary/10 text-primary"
               >
-                3. Plak in Claude
+                {t("prompter.step3")}
               </Badge>
               <ArrowRight className="h-3 w-3" />
               <Badge
                 variant="secondary"
                 className="bg-primary/10 text-primary"
               >
-                4. Importeer CSV
+                {t("prompter.step4")}
               </Badge>
             </div>
             <p className="text-blue-700 dark:text-blue-400">
@@ -251,9 +252,9 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
         <div className="space-y-4">
           <Card className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
             <CardHeader>
-              <CardTitle className="text-sm">Configuratie</CardTitle>
+              <CardTitle className="text-sm">{t("prompter.config")}</CardTitle>
               <CardDescription>
-                Pas de parameters aan voor je lead zoektocht.
+                {t("prompter.configDesc")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -261,7 +262,7 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Target className="h-4 w-4 text-primary" />
-                  ICP Profiel
+                  {t("prompter.icpProfile")}
                 </Label>
                 <Select
                   value={selectedProfileId}
@@ -304,7 +305,7 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
               {/* Company info */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Bedrijfsnaam</Label>
+                  <Label>{t("prompter.companyName")}</Label>
                   <Input
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
@@ -312,7 +313,7 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Website</Label>
+                  <Label>{t("company.website")}</Label>
                   <Input
                     value={companyWebsite}
                     onChange={(e) => setCompanyWebsite(e.target.value)}
@@ -323,7 +324,7 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
 
               {/* Product */}
               <div className="space-y-2">
-                <Label>Product/Dienst beschrijving</Label>
+                <Label>{t("prompter.product")}</Label>
                 <Textarea
                   value={productDescription}
                   onChange={(e) => setProductDescription(e.target.value)}
@@ -336,7 +337,7 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Globe className="h-4 w-4 text-primary" />
-                  Doelregio&apos;s
+                  {t("prompter.regions")}
                 </Label>
                 <Input
                   value={targetRegions}
@@ -350,7 +351,7 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-primary" />
-                    Aantal leads
+                    {t("prompter.leadCount")}
                   </Label>
                   <Input
                     type="number"
@@ -363,7 +364,7 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Taal van leads</Label>
+                  <Label>{t("prompter.language")}</Label>
                   <Select
                     value={language}
                     onValueChange={(v) => v && setLanguage(v)}
@@ -372,11 +373,11 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="en">Engels</SelectItem>
-                      <SelectItem value="ar">Arabisch + Engels</SelectItem>
-                      <SelectItem value="nl">Nederlands</SelectItem>
-                      <SelectItem value="de">Duits</SelectItem>
-                      <SelectItem value="fr">Frans</SelectItem>
+                      <SelectItem value="en">{t("icp.langEn")}</SelectItem>
+                      <SelectItem value="ar">{t("prompter.langAr")}</SelectItem>
+                      <SelectItem value="nl">{t("icp.langNl")}</SelectItem>
+                      <SelectItem value="de">{t("icp.langDe")}</SelectItem>
+                      <SelectItem value="fr">{t("icp.langFr")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -384,7 +385,7 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
 
               {/* Extra instructions */}
               <div className="space-y-2">
-                <Label>Extra instructies (optioneel)</Label>
+                <Label>{t("prompter.extra")}</Label>
                 <Textarea
                   value={extraInstructions}
                   onChange={(e) => setExtraInstructions(e.target.value)}
@@ -400,7 +401,7 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
             <CardContent className="flex items-start gap-3 pt-4">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-yellow-600" />
               <div className="text-sm text-yellow-800 dark:text-yellow-400">
-                <p className="font-medium">Verzendlimiet: 100 emails/dag</p>
+                <p className="font-medium">{t("prompter.sendLimit")}</p>
                 <p className="mt-1">
                   PROLEAD verstuurt automatisch de warmste leads eerst
                   (hoogste ICP score). Bij {leadCount} leads duurt het{" "}
@@ -419,22 +420,22 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-sm">
-                    Gegenereerde Prompt
+                    {t("prompter.generated")}
                   </CardTitle>
                   <CardDescription>
-                    Kopieer en plak in Claude Cowork.
+                    {t("prompter.generatedDesc")}
                   </CardDescription>
                 </div>
                 <Button onClick={handleCopy} className="shrink-0 bg-gradient-brand text-white shadow-brand hover:opacity-90">
                   {copied ? (
                     <>
                       <Check className="mr-2 h-4 w-4" />
-                      Gekopieerd!
+                      {t("prompter.copied")}
                     </>
                   ) : (
                     <>
                       <Copy className="mr-2 h-4 w-4" />
-                      Kopieer prompt
+                      {t("prompter.copy")}
                     </>
                   )}
                 </Button>
@@ -452,7 +453,7 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
           {/* Next steps */}
           <Card className="border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
             <CardHeader>
-              <CardTitle className="text-sm">Na het importeren</CardTitle>
+              <CardTitle className="text-sm">{t("prompter.afterImport")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
               <p>

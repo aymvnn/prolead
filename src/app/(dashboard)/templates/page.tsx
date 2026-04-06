@@ -40,8 +40,10 @@ import {
   Star,
   Loader2,
 } from "lucide-react";
+import { useTranslation } from "@/components/language-provider";
 
 export default function TemplatesPage() {
+  const { t } = useTranslation();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -177,7 +179,7 @@ export default function TemplatesPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
           <Input
             type="search"
-            placeholder="Zoek templates..."
+            placeholder={t("templates.search")}
             className="w-72 bg-white pl-9 dark:bg-neutral-950"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -188,13 +190,13 @@ export default function TemplatesPage() {
             render={<Button />}
           >
             <Plus className="mr-2 h-4 w-4" />
-            Nieuw template
+            {t("templates.new")}
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
             <form onSubmit={handleSave}>
               <DialogHeader>
                 <DialogTitle>
-                  {editingId ? "Template bewerken" : "Nieuw template"}
+                  {editingId ? t("templates.editTitle") : t("templates.new")}
                 </DialogTitle>
                 <DialogDescription>
                   Gebruik variabelen zoals {"{first_name}"}, {"{company}"},{" "}
@@ -203,7 +205,7 @@ export default function TemplatesPage() {
               </DialogHeader>
               <div className="mt-4 space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="tpl-name">Naam</Label>
+                  <Label htmlFor="tpl-name">{t("templates.name")}</Label>
                   <Input
                     id="tpl-name"
                     placeholder="Bijv. Koude introductie"
@@ -213,7 +215,7 @@ export default function TemplatesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tpl-category">Categorie</Label>
+                  <Label htmlFor="tpl-category">{t("templates.category")}</Label>
                   <Input
                     id="tpl-category"
                     placeholder="Bijv. Introductie, Follow-up"
@@ -222,7 +224,7 @@ export default function TemplatesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tpl-subject">Onderwerp</Label>
+                  <Label htmlFor="tpl-subject">{t("templates.subject")}</Label>
                   <Input
                     id="tpl-subject"
                     placeholder="Hoi {first_name}, even voorstellen"
@@ -232,7 +234,7 @@ export default function TemplatesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tpl-body">Inhoud</Label>
+                  <Label htmlFor="tpl-body">{t("templates.body")}</Label>
                   <Textarea
                     id="tpl-body"
                     placeholder="Schrijf hier je email template..."
@@ -245,7 +247,7 @@ export default function TemplatesPage() {
                 {previewVariables.length > 0 && (
                   <div className="space-y-1">
                     <p className="text-xs font-medium text-neutral-500">
-                      Gevonden variabelen:
+                      {t("templates.foundVariables")}:
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {previewVariables.map((v) => (
@@ -266,7 +268,7 @@ export default function TemplatesPage() {
                   {saving && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  {editingId ? "Opslaan" : "Aanmaken"}
+                  {editingId ? t("common.save") : t("common.create")}
                 </Button>
               </DialogFooter>
             </form>
@@ -283,7 +285,7 @@ export default function TemplatesPage() {
             size="sm"
             onClick={() => setActiveCategory(cat)}
           >
-            {cat}
+            {cat === "Alle" ? t("templates.all") : cat}
           </Button>
         ))}
       </div>
@@ -292,19 +294,19 @@ export default function TemplatesPage() {
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
-          <span className="ml-3 text-neutral-500">Laden...</span>
+          <span className="ml-3 text-neutral-500">{t("common.loading")}</span>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-neutral-300 bg-white py-16 text-center dark:border-neutral-700 dark:bg-neutral-950">
           <FileText className="h-10 w-10 text-neutral-300 dark:text-neutral-600" />
           <div>
             <p className="font-medium text-neutral-600 dark:text-neutral-400">
-              Geen templates gevonden
+              {t("templates.noTemplates")}
             </p>
             <p className="text-sm text-neutral-400">
               {searchQuery
-                ? "Probeer een andere zoekopdracht."
-                : "Maak je eerste email template aan."}
+                ? t("templates.tryDifferentSearch")
+                : t("templates.createFirst")}
             </p>
           </div>
         </div>
@@ -351,14 +353,14 @@ export default function TemplatesPage() {
                           onClick={() => openEditDialog(template)}
                         >
                           <Pencil className="mr-2 h-4 w-4" />
-                          Bewerken
+                          {t("templates.edit")}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-red-600"
                           onClick={() => handleDelete(template.id)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Verwijderen
+                          {t("templates.delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

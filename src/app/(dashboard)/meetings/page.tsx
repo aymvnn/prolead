@@ -59,6 +59,7 @@ import {
   AlertTriangle,
   Link as LinkIcon,
 } from "lucide-react";
+import { useTranslation } from "@/components/language-provider";
 
 type MeetingWithLead = Meeting & { lead: Lead | null };
 
@@ -73,14 +74,15 @@ const statusColors: Record<MeetingStatus, string> = {
     "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
 };
 
-const statusLabels: Record<MeetingStatus, string> = {
-  scheduled: "Gepland",
-  completed: "Voltooid",
-  cancelled: "Geannuleerd",
-  no_show: "Niet verschenen",
+const statusKeys: Record<MeetingStatus, string> = {
+  scheduled: "meetings.scheduled",
+  completed: "meetings.completed",
+  cancelled: "meetings.cancelled",
+  no_show: "meetings.noShow",
 };
 
 export default function MeetingsPage() {
+  const { t } = useTranslation();
   const [meetings, setMeetings] = useState<MeetingWithLead[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -207,7 +209,7 @@ export default function MeetingsPage() {
   }
 
   function getLeadName(m: MeetingWithLead): string {
-    if (!m.lead) return "Onbekend";
+    if (!m.lead) return t("meetings.unknown");
     return `${m.lead.first_name} ${m.lead.last_name}`;
   }
 
@@ -303,7 +305,7 @@ export default function MeetingsPage() {
             variant="secondary"
             className={statusColors[meeting.status]}
           >
-            {statusLabels[meeting.status]}
+            {t(statusKeys[meeting.status])}
           </Badge>
         </TableCell>
         <TableCell>
@@ -324,19 +326,19 @@ export default function MeetingsPage() {
                 onClick={() => updateMeetingStatus(meeting.id, "completed")}
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" />
-                Voltooid
+                {t("meetings.completed")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => updateMeetingStatus(meeting.id, "cancelled")}
               >
                 <XCircle className="mr-2 h-4 w-4" />
-                Geannuleerd
+                {t("meetings.cancelled")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => updateMeetingStatus(meeting.id, "no_show")}
               >
                 <AlertTriangle className="mr-2 h-4 w-4" />
-                Niet verschenen
+                {t("meetings.noShow")}
               </DropdownMenuItem>
               {meeting.status !== "scheduled" && (
                 <DropdownMenuItem
@@ -345,7 +347,7 @@ export default function MeetingsPage() {
                   }
                 >
                   <Calendar className="mr-2 h-4 w-4" />
-                  Opnieuw plannen
+                  {t("meetings.reschedule")}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -366,7 +368,7 @@ export default function MeetingsPage() {
             onClick={() => setView("list")}
           >
             <List className="mr-2 h-4 w-4" />
-            Lijst
+            {t("meetings.list")}
           </Button>
           <Button
             variant={view === "calendar" ? "default" : "outline"}
@@ -374,25 +376,25 @@ export default function MeetingsPage() {
             onClick={() => setView("calendar")}
           >
             <CalendarDays className="mr-2 h-4 w-4" />
-            Kalender
+            {t("meetings.calendar")}
           </Button>
         </div>
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
           <DialogTrigger render={<Button />}>
             <Plus className="mr-2 h-4 w-4" />
-            Meeting plannen
+            {t("meetings.schedule")}
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <form onSubmit={handleAddMeeting}>
               <DialogHeader>
-                <DialogTitle>Meeting plannen</DialogTitle>
+                <DialogTitle>{t("meetings.schedule")}</DialogTitle>
                 <DialogDescription>
-                  Plan een nieuwe meeting met een lead.
+                  {t("meetings.scheduleDesc")}
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-4 space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="mtg-title">Titel</Label>
+                  <Label htmlFor="mtg-title">{t("meetings.formTitle")}</Label>
                   <Input
                     id="mtg-title"
                     placeholder="Bijv. Kennismaking"
@@ -402,13 +404,13 @@ export default function MeetingsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="mtg-lead">Lead</Label>
+                  <Label htmlFor="mtg-lead">{t("meetings.formLead")}</Label>
                   <Select
                     value={formLeadId}
                     onValueChange={(v) => v && setFormLeadId(v)}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecteer een lead" />
+                      <SelectValue placeholder={t("meetings.selectLead")} />
                     </SelectTrigger>
                     <SelectContent>
                       {leads.map((lead) => (
@@ -421,7 +423,7 @@ export default function MeetingsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="mtg-start">Starttijd</Label>
+                    <Label htmlFor="mtg-start">{t("meetings.startTime")}</Label>
                     <Input
                       id="mtg-start"
                       type="datetime-local"
@@ -431,7 +433,7 @@ export default function MeetingsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="mtg-end">Eindtijd</Label>
+                    <Label htmlFor="mtg-end">{t("meetings.endTime")}</Label>
                     <Input
                       id="mtg-end"
                       type="datetime-local"
@@ -442,7 +444,7 @@ export default function MeetingsPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="mtg-link">Meeting link (optioneel)</Label>
+                  <Label htmlFor="mtg-link">{t("meetings.meetingLink")}</Label>
                   <Input
                     id="mtg-link"
                     type="url"
@@ -457,7 +459,7 @@ export default function MeetingsPage() {
                   {saving && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Plannen
+                  {t("meetings.planBtn")}
                 </Button>
               </DialogFooter>
             </form>
@@ -468,7 +470,7 @@ export default function MeetingsPage() {
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
-          <span className="ml-3 text-neutral-500">Laden...</span>
+          <span className="ml-3 text-neutral-500">{t("common.loading")}</span>
         </div>
       ) : (
         <>
@@ -476,22 +478,22 @@ export default function MeetingsPage() {
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
               {
-                label: "Gepland",
+                label: t("meetings.scheduled"),
                 value: statCounts.scheduledCount,
                 color: "text-blue-600",
               },
               {
-                label: "Voltooid",
+                label: t("meetings.completed"),
                 value: statCounts.completedCount,
                 color: "text-green-600",
               },
               {
-                label: "Geannuleerd",
+                label: t("meetings.cancelled"),
                 value: statCounts.cancelledCount,
                 color: "text-red-600",
               },
               {
-                label: "Niet verschenen",
+                label: t("meetings.noShow"),
                 value: statCounts.noShowCount,
                 color: "text-orange-600",
               },
@@ -601,18 +603,18 @@ export default function MeetingsPage() {
               {/* Upcoming */}
               <div>
                 <h3 className="mb-3 text-sm font-semibold uppercase text-neutral-500">
-                  Aankomende meetings
+                  {t("meetings.upcoming")}
                 </h3>
                 <div className="rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Meeting</TableHead>
-                        <TableHead>Lead</TableHead>
-                        <TableHead>Datum & Tijd</TableHead>
-                        <TableHead>Duur</TableHead>
-                        <TableHead>Link</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>{t("meetings.meeting")}</TableHead>
+                        <TableHead>{t("meetings.lead")}</TableHead>
+                        <TableHead>{t("meetings.dateTime")}</TableHead>
+                        <TableHead>{t("meetings.duration")}</TableHead>
+                        <TableHead>{t("meetings.link")}</TableHead>
+                        <TableHead>{t("meetings.statusLabel")}</TableHead>
                         <TableHead className="w-10" />
                       </TableRow>
                     </TableHeader>
@@ -625,7 +627,7 @@ export default function MeetingsPage() {
                           >
                             <div className="flex flex-col items-center gap-2">
                               <Calendar className="h-8 w-8 text-neutral-300 dark:text-neutral-600" />
-                              <p>Geen aankomende meetings.</p>
+                              <p>{t("meetings.noUpcoming")}</p>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -640,18 +642,18 @@ export default function MeetingsPage() {
               {/* Past */}
               <div>
                 <h3 className="mb-3 text-sm font-semibold uppercase text-neutral-500">
-                  Afgelopen meetings
+                  {t("meetings.past")}
                 </h3>
                 <div className="rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Meeting</TableHead>
-                        <TableHead>Lead</TableHead>
-                        <TableHead>Datum & Tijd</TableHead>
-                        <TableHead>Duur</TableHead>
-                        <TableHead>Link</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>{t("meetings.meeting")}</TableHead>
+                        <TableHead>{t("meetings.lead")}</TableHead>
+                        <TableHead>{t("meetings.dateTime")}</TableHead>
+                        <TableHead>{t("meetings.duration")}</TableHead>
+                        <TableHead>{t("meetings.link")}</TableHead>
+                        <TableHead>{t("meetings.statusLabel")}</TableHead>
                         <TableHead className="w-10" />
                       </TableRow>
                     </TableHeader>
@@ -662,7 +664,7 @@ export default function MeetingsPage() {
                             colSpan={7}
                             className="h-24 text-center text-neutral-500"
                           >
-                            Nog geen afgelopen meetings.
+                            {t("meetings.noPast")}
                           </TableCell>
                         </TableRow>
                       ) : (

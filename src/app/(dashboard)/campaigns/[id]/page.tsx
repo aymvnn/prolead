@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useTranslation } from "@/components/language-provider";
 import type {
   Campaign,
   CampaignStatus,
@@ -98,20 +99,9 @@ const statusColors: Record<CampaignStatus, string> = {
     "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-500",
 };
 
-const statusLabels: Record<CampaignStatus, string> = {
-  draft: "Concept",
-  active: "Actief",
-  paused: "Gepauzeerd",
-  completed: "Voltooid",
-  archived: "Gearchiveerd",
-};
+// statusLabels moved inside component to use t()
 
-const sequenceStatusLabels: Record<SequenceStatus, string> = {
-  draft: "Concept",
-  active: "Actief",
-  paused: "Gepauzeerd",
-  completed: "Voltooid",
-};
+// sequenceStatusLabels moved inside component to use t()
 
 const sequenceStatusColors: Record<SequenceStatus, string> = {
   draft:
@@ -124,36 +114,13 @@ const sequenceStatusColors: Record<SequenceStatus, string> = {
     "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
 };
 
-const leadStatusLabels: Record<LeadStatus, string> = {
-  new: "Nieuw",
-  researched: "Onderzocht",
-  contacted: "Benaderd",
-  replied: "Gereageerd",
-  interested: "Geïnteresseerd",
-  meeting_booked: "Meeting",
-  closed_won: "Gewonnen",
-  closed_lost: "Verloren",
-  unsubscribed: "Afgemeld",
-  bounced: "Bounced",
-};
+// leadStatusLabels moved inside component to use t()
 
 // ── Tabs ───────────────────────────────────
 
 type TabKey = "leads" | "sequences" | "settings";
 
-const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
-  { key: "leads", label: "Leads", icon: <Users className="h-4 w-4" /> },
-  {
-    key: "sequences",
-    label: "Sequences",
-    icon: <ListOrdered className="h-4 w-4" />,
-  },
-  {
-    key: "settings",
-    label: "Instellingen",
-    icon: <Settings className="h-4 w-4" />,
-  },
-];
+// tabs moved inside component to use t()
 
 // ── Page component ─────────────────────────
 
@@ -165,6 +132,49 @@ export default function CampaignDetailPage({
   const { id } = use(params);
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useTranslation();
+
+  const statusLabels: Record<CampaignStatus, string> = {
+    draft: t("common.draft"),
+    active: t("common.active"),
+    paused: t("common.paused"),
+    completed: t("common.completed"),
+    archived: t("common.archived"),
+  };
+
+  const sequenceStatusLabels: Record<SequenceStatus, string> = {
+    draft: t("common.draft"),
+    active: t("common.active"),
+    paused: t("common.paused"),
+    completed: t("common.completed"),
+  };
+
+  const leadStatusLabels: Record<LeadStatus, string> = {
+    new: t("status.new"),
+    researched: t("status.researched"),
+    contacted: t("status.contacted"),
+    replied: t("status.replied"),
+    interested: t("status.interested"),
+    meeting_booked: t("status.meeting_booked"),
+    closed_won: t("status.closed_won"),
+    closed_lost: t("status.closed_lost"),
+    unsubscribed: t("status.unsubscribed"),
+    bounced: t("status.bounced"),
+  };
+
+  const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
+    { key: "leads", label: t("nav.leads"), icon: <Users className="h-4 w-4" /> },
+    {
+      key: "sequences",
+      label: t("nav.sequences"),
+      icon: <ListOrdered className="h-4 w-4" />,
+    },
+    {
+      key: "settings",
+      label: t("nav.settings"),
+      icon: <Settings className="h-4 w-4" />,
+    },
+  ];
 
   const [campaign, setCampaign] = useState<CampaignWithRelations | null>(null);
   const [campaignLeads, setCampaignLeads] = useState<CampaignLead[]>([]);
@@ -331,7 +341,7 @@ export default function CampaignDetailPage({
   if (!campaign) {
     return (
       <div className="text-center text-neutral-500">
-        Campaign niet gevonden
+        {t("campaignDetail.notFound")}
       </div>
     );
   }
@@ -357,7 +367,7 @@ export default function CampaignDetailPage({
               </Badge>
             </div>
             <p className="text-sm text-neutral-500">
-              Aangemaakt op{" "}
+              {t("campaignDetail.createdOn")}{" "}
               {new Date(campaign.created_at).toLocaleDateString("nl-NL")}
             </p>
           </div>
@@ -371,19 +381,19 @@ export default function CampaignDetailPage({
             {campaign.status === "active" ? (
               <>
                 <Pause className="mr-2 h-4 w-4" />
-                Pauzeren
+                {t("campaigns.pause")}
               </>
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4" />
-                Activeren
+                {t("campaigns.activate")}
               </>
             )}
           </Button>
           <Link href={`/campaigns/${campaign.id}/edit`}>
             <Button variant="outline">
               <Pencil className="mr-2 h-4 w-4" />
-              Bewerken
+              {t("common.edit")}
             </Button>
           </Link>
         </div>
@@ -393,31 +403,31 @@ export default function CampaignDetailPage({
       <div className="grid grid-cols-5 gap-4">
         {[
           {
-            label: "Totaal leads",
+            label: t("campaigns.totalLeads"),
             value: totalLeads,
             icon: <Users className="h-4 w-4 text-neutral-400" />,
             color: "text-neutral-900 dark:text-white",
           },
           {
-            label: "Emails verstuurd",
+            label: t("campaigns.sent"),
             value: emailsSent,
             icon: <Mail className="h-4 w-4 text-blue-400" />,
             color: "text-blue-600",
           },
           {
-            label: "Open rate",
+            label: t("campaignDetail.openRate"),
             value: `${openRate}%`,
             icon: <Eye className="h-4 w-4 text-purple-400" />,
             color: "text-purple-600",
           },
           {
-            label: "Reply rate",
+            label: t("campaignDetail.replyRate"),
             value: `${replyRate}%`,
             icon: <MessageSquare className="h-4 w-4 text-green-400" />,
             color: "text-green-600",
           },
           {
-            label: "Meetings geboekt",
+            label: t("campaigns.meetings"),
             value: meetingsBooked,
             icon: <CalendarCheck className="h-4 w-4 text-teal-400" />,
             color: "text-teal-600",
@@ -462,7 +472,7 @@ export default function CampaignDetailPage({
             <div className="flex items-center justify-between">
               <p className="text-sm text-neutral-500">
                 {campaignLeads.length} lead
-                {campaignLeads.length !== 1 ? "s" : ""} in deze campaign
+                {campaignLeads.length !== 1 ? "s" : ""} {t("campaignDetail.inThisCampaign")}
               </p>
               <Dialog
                 open={addLeadsOpen}
@@ -479,13 +489,13 @@ export default function CampaignDetailPage({
                   render={<Button variant="outline" />}
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Lead toevoegen
+                  {t("leads.addLead")}
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-lg">
                   <DialogHeader>
-                    <DialogTitle>Leads toevoegen</DialogTitle>
+                    <DialogTitle>{t("campaignDetail.addLeadsTitle")}</DialogTitle>
                     <DialogDescription>
-                      Selecteer leads om aan deze campaign toe te voegen.
+                      {t("campaignDetail.addLeadsDesc")}
                     </DialogDescription>
                   </DialogHeader>
 
@@ -494,7 +504,7 @@ export default function CampaignDetailPage({
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
                     <Input
                       type="search"
-                      placeholder="Zoek leads..."
+                      placeholder={t("leads.search")}
                       className="pl-9"
                       value={leadSearch}
                       onChange={(e) => setLeadSearch(e.target.value)}
@@ -509,7 +519,7 @@ export default function CampaignDetailPage({
                       </div>
                     ) : filteredAvailableLeads.length === 0 ? (
                       <p className="py-8 text-center text-sm text-neutral-500">
-                        Geen beschikbare leads gevonden
+                        {t("campaignDetail.noAvailableLeads")}
                       </p>
                     ) : (
                       <div className="space-y-1">
@@ -549,7 +559,7 @@ export default function CampaignDetailPage({
                       variant="outline"
                       onClick={() => setAddLeadsOpen(false)}
                     >
-                      Annuleren
+                      {t("common.cancel")}
                     </Button>
                     <Button
                       onClick={addSelectedLeads}
@@ -558,13 +568,13 @@ export default function CampaignDetailPage({
                       {addingLeads ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Toevoegen...
+                          {t("campaignDetail.adding")}
                         </>
                       ) : (
                         <>
                           <Plus className="mr-2 h-4 w-4" />
                           {selectedLeadIds.size} lead
-                          {selectedLeadIds.size !== 1 ? "s" : ""} toevoegen
+                          {selectedLeadIds.size !== 1 ? "s" : ""} {t("campaignDetail.addAction")}
                         </>
                       )}
                     </Button>
@@ -577,12 +587,12 @@ export default function CampaignDetailPage({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Naam</TableHead>
-                    <TableHead>Bedrijf</TableHead>
-                    <TableHead>Functie</TableHead>
-                    <TableHead className="text-right">ICP Score</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Toegevoegd</TableHead>
+                    <TableHead>{t("campaignDetail.name")}</TableHead>
+                    <TableHead>{t("campaignDetail.company")}</TableHead>
+                    <TableHead>{t("campaignDetail.function")}</TableHead>
+                    <TableHead className="text-right">{t("campaignDetail.icpScore")}</TableHead>
+                    <TableHead>{t("campaignDetail.status")}</TableHead>
+                    <TableHead>{t("campaignDetail.added")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -595,8 +605,7 @@ export default function CampaignDetailPage({
                         <div className="flex flex-col items-center gap-2">
                           <Users className="h-8 w-8 text-neutral-300 dark:text-neutral-600" />
                           <p>
-                            Nog geen leads in deze campaign. Voeg leads toe om
-                            te beginnen.
+                            {t("campaignDetail.noLeadsYet")}
                           </p>
                         </div>
                       </TableCell>
@@ -646,7 +655,7 @@ export default function CampaignDetailPage({
           <div className="space-y-4">
             <p className="text-sm text-neutral-500">
               {sequences.length} sequence
-              {sequences.length !== 1 ? "s" : ""} gekoppeld aan deze campaign
+              {sequences.length !== 1 ? "s" : ""} {t("campaignDetail.linkedToCampaign")}
             </p>
 
             {sequences.length === 0 ? (
@@ -654,7 +663,7 @@ export default function CampaignDetailPage({
                 <CardContent className="flex flex-col items-center gap-2 py-8 text-center">
                   <ListOrdered className="h-8 w-8 text-neutral-300 dark:text-neutral-600" />
                   <p className="text-neutral-500">
-                    Nog geen sequences gekoppeld aan deze campaign.
+                    {t("campaignDetail.noSequencesYet")}
                   </p>
                 </CardContent>
               </Card>
@@ -681,10 +690,10 @@ export default function CampaignDetailPage({
                           <strong className="text-neutral-900 dark:text-white">
                             {seq.steps_count}
                           </strong>{" "}
-                          stappen
+                          {t("campaignDetail.steps")}
                         </span>
                         <span>
-                          Aangemaakt op{" "}
+                          {t("campaignDetail.createdOn")}{" "}
                           {new Date(seq.created_at).toLocaleDateString("nl-NL")}
                         </span>
                       </div>
@@ -702,23 +711,23 @@ export default function CampaignDetailPage({
             {/* Campaign settings */}
             <Card>
               <CardHeader>
-                <CardTitle>Campaign instellingen</CardTitle>
+                <CardTitle>{t("campaignDetail.campaignSettings")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-neutral-500">Dagelijks limiet</span>
+                  <span className="text-neutral-500">{t("campaignDetail.dailyLimit")}</span>
                   <span className="font-medium">
-                    {campaign.settings?.daily_limit ?? "-"} emails/dag
+                    {campaign.settings?.daily_limit ?? "-"} {t("campaignDetail.emailsPerDay")}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-neutral-500">Tijdzone</span>
+                  <span className="text-neutral-500">{t("campaignDetail.timezone")}</span>
                   <span className="font-medium">
                     {campaign.settings?.timezone ?? "-"}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-neutral-500">Verzendvenster</span>
+                  <span className="text-neutral-500">{t("campaignDetail.sendWindow")}</span>
                   <span className="font-medium">
                     {campaign.settings?.send_window_start &&
                     campaign.settings?.send_window_end
@@ -727,9 +736,9 @@ export default function CampaignDetailPage({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-neutral-500">Weekenden overslaan</span>
+                  <span className="text-neutral-500">{t("campaignDetail.skipWeekends")}</span>
                   <span className="font-medium">
-                    {campaign.settings?.skip_weekends ? "Ja" : "Nee"}
+                    {campaign.settings?.skip_weekends ? t("campaignDetail.yes") : t("campaignDetail.no")}
                   </span>
                 </div>
               </CardContent>
@@ -738,27 +747,27 @@ export default function CampaignDetailPage({
             {/* Profiles */}
             <Card>
               <CardHeader>
-                <CardTitle>Profielen</CardTitle>
+                <CardTitle>{t("campaignDetail.profiles")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-neutral-500">ICP Profiel</span>
+                  <span className="text-neutral-500">{t("campaignDetail.icpProfile")}</span>
                   <span className="font-medium">
                     {campaign.icp_profiles?.name ?? (
-                      <span className="text-neutral-400">Niet ingesteld</span>
+                      <span className="text-neutral-400">{t("campaignDetail.notSet")}</span>
                     )}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-neutral-500">Voice Profiel</span>
+                  <span className="text-neutral-500">{t("campaignDetail.voiceProfile")}</span>
                   <span className="font-medium">
                     {campaign.voice_profiles?.name ?? (
-                      <span className="text-neutral-400">Niet ingesteld</span>
+                      <span className="text-neutral-400">{t("campaignDetail.notSet")}</span>
                     )}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-neutral-500">Status</span>
+                  <span className="text-neutral-500">{t("campaignDetail.status")}</span>
                   <Badge
                     variant="secondary"
                     className={statusColors[campaign.status]}
@@ -767,7 +776,7 @@ export default function CampaignDetailPage({
                   </Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-neutral-500">Laatst bijgewerkt</span>
+                  <span className="text-neutral-500">{t("campaignDetail.lastUpdated")}</span>
                   <span className="font-medium">
                     {new Date(campaign.updated_at).toLocaleDateString("nl-NL")}
                   </span>

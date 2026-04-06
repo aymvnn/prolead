@@ -37,6 +37,7 @@ import {
   Megaphone,
   Loader2,
 } from "lucide-react";
+import { useTranslation } from "@/components/language-provider";
 
 type CampaignStatus = "draft" | "active" | "paused" | "completed" | "archived";
 
@@ -67,15 +68,16 @@ const statusColors: Record<CampaignStatus, string> = {
     "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-500",
 };
 
-const statusLabels: Record<CampaignStatus, string> = {
-  draft: "Concept",
-  active: "Actief",
-  paused: "Gepauzeerd",
-  completed: "Voltooid",
-  archived: "Gearchiveerd",
+const statusKeys: Record<CampaignStatus, string> = {
+  draft: "common.draft",
+  active: "common.active",
+  paused: "common.paused",
+  completed: "common.completed",
+  archived: "common.archived",
 };
 
 export default function CampaignsPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -179,7 +181,7 @@ export default function CampaignsPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
             <Input
               type="search"
-              placeholder="Zoek campaigns..."
+              placeholder={t("campaigns.search")}
               className="w-72 bg-white pl-9 dark:bg-neutral-950"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -193,10 +195,10 @@ export default function CampaignsPage() {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Alle statussen</SelectItem>
-              {Object.entries(statusLabels).map(([value, label]) => (
+              <SelectItem value="all">{t("campaigns.allStatuses")}</SelectItem>
+              {Object.entries(statusKeys).map(([value, key]) => (
                 <SelectItem key={value} value={value}>
-                  {label}
+                  {t(key)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -205,7 +207,7 @@ export default function CampaignsPage() {
         <Link href="/campaigns/new">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            Nieuwe campaign
+            {t("campaigns.new")}
           </Button>
         </Link>
       </div>
@@ -214,22 +216,22 @@ export default function CampaignsPage() {
       <div className="grid grid-cols-4 gap-4">
         {[
           {
-            label: "Totaal leads",
+            label: t("campaigns.totalLeads"),
             value: totalLeads,
             color: "text-neutral-900 dark:text-white",
           },
           {
-            label: "Emails verstuurd",
+            label: t("campaigns.sent"),
             value: totalSent,
             color: "text-blue-600",
           },
           {
-            label: "Gem. reply rate",
+            label: t("campaigns.replyRate"),
             value: `${avgReply}%`,
             color: "text-green-600",
           },
           {
-            label: "Meetings geboekt",
+            label: t("campaigns.meetings"),
             value: totalMeetings,
             color: "text-teal-600",
           },
@@ -249,12 +251,12 @@ export default function CampaignsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Campaign</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Leads</TableHead>
-              <TableHead className="text-right">Emails verstuurd</TableHead>
-              <TableHead className="text-right">Reply rate</TableHead>
-              <TableHead className="text-right">Meetings</TableHead>
+              <TableHead>{t("campaigns.campaign")}</TableHead>
+              <TableHead>{t("campaigns.status")}</TableHead>
+              <TableHead className="text-right">{t("campaigns.leads")}</TableHead>
+              <TableHead className="text-right">{t("campaigns.emailsSent")}</TableHead>
+              <TableHead className="text-right">{t("campaigns.replyRateCol")}</TableHead>
+              <TableHead className="text-right">{t("campaigns.meetingsCol")}</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
@@ -267,7 +269,7 @@ export default function CampaignsPage() {
                 >
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
-                    <p>Campaigns laden...</p>
+                    <p>{t("campaigns.loading")}</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -281,8 +283,8 @@ export default function CampaignsPage() {
                     <Megaphone className="h-8 w-8 text-neutral-300 dark:text-neutral-600" />
                     <p>
                       {searchQuery
-                        ? "Geen campaigns gevonden voor deze zoekopdracht"
-                        : "Nog geen campaigns. Maak je eerste campaign aan."}
+                        ? t("campaigns.noSearchResults")
+                        : t("campaigns.noCampaigns")}
                     </p>
                   </div>
                 </TableCell>
@@ -303,7 +305,7 @@ export default function CampaignsPage() {
                       {campaign.name}
                     </Link>
                     <p className="text-xs text-neutral-500">
-                      Aangemaakt op{" "}
+                      {t("campaigns.createdOn")}{" "}
                       {new Date(campaign.created_at).toLocaleDateString(
                         "nl-NL",
                       )}
@@ -314,7 +316,7 @@ export default function CampaignsPage() {
                       variant="secondary"
                       className={statusColors[campaign.status]}
                     >
-                      {statusLabels[campaign.status]}
+                      {t(statusKeys[campaign.status])}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -356,8 +358,8 @@ export default function CampaignsPage() {
                           >
                             <Play className="mr-2 h-4 w-4" />
                             {campaign.status === "draft"
-                              ? "Activeren"
-                              : "Hervatten"}
+                              ? t("campaigns.activate")
+                              : t("campaigns.resume")}
                           </DropdownMenuItem>
                         )}
                         {campaign.status === "active" && (
@@ -367,7 +369,7 @@ export default function CampaignsPage() {
                             }
                           >
                             <Pause className="mr-2 h-4 w-4" />
-                            Pauzeren
+                            {t("campaigns.pause")}
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
@@ -375,7 +377,7 @@ export default function CampaignsPage() {
                           onClick={() => handleDelete(campaign.id)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Verwijderen
+                          {t("campaigns.delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

@@ -13,6 +13,7 @@ import {
 import { ArrowLeft, Upload, FileSpreadsheet, Check, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/components/language-provider";
 
 interface CSVRow {
   first_name: string;
@@ -27,6 +28,7 @@ interface CSVRow {
 }
 
 export default function ImportLeadsPage() {
+  const { t } = useTranslation();
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<CSVRow[]>([]);
   const [importing, setImporting] = useState(false);
@@ -91,7 +93,7 @@ export default function ImportLeadsPage() {
     const invalidCount = parsedData.length - validRows.length;
     if (invalidCount > 0) {
       setErrors([
-        `${invalidCount} rij(en) overgeslagen (ontbrekende verplichte velden)`,
+        `${invalidCount} ${t("importLeads.rowsSkipped")}`,
       ]);
     }
 
@@ -124,18 +126,16 @@ export default function ImportLeadsPage() {
           </Button>
         </Link>
         <div>
-          <h2 className="text-2xl font-bold">Leads importeren</h2>
-          <p className="text-neutral-500">Upload een CSV bestand met leads</p>
+          <h2 className="text-2xl font-bold">{t("importLeads.title")}</h2>
+          <p className="text-neutral-500">{t("importLeads.subtitle")}</p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>CSV Upload</CardTitle>
+          <CardTitle>{t("importLeads.csvUpload")}</CardTitle>
           <CardDescription>
-            Je CSV moet de volgende kolommen bevatten: first_name, last_name,
-            email, company. Optioneel: title, linkedin_url, phone, website,
-            industry.
+            {t("importLeads.csvDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -155,15 +155,15 @@ export default function ImportLeadsPage() {
                 <FileSpreadsheet className="mb-2 h-8 w-8 text-green-500" />
                 <p className="font-medium">{file.name}</p>
                 <p className="text-sm text-neutral-500">
-                  {parsedData.length} leads gevonden
+                  {parsedData.length} {t("importLeads.leadsFound")}
                 </p>
               </>
             ) : (
               <>
                 <Upload className="mb-2 h-8 w-8 text-neutral-400" />
-                <p className="font-medium">Klik om een CSV te uploaden</p>
+                <p className="font-medium">{t("importLeads.clickToUpload")}</p>
                 <p className="text-sm text-neutral-500">
-                  Of sleep het bestand hierheen
+                  {t("importLeads.dragAndDrop")}
                 </p>
               </>
             )}
@@ -172,7 +172,7 @@ export default function ImportLeadsPage() {
           {parsedData.length > 0 && (
             <div className="space-y-3">
               <div className="rounded-lg bg-neutral-50 p-3 dark:bg-neutral-900">
-                <p className="text-sm font-medium">Preview (eerste 5 rijen)</p>
+                <p className="text-sm font-medium">{t("importLeads.preview")}</p>
                 <div className="mt-2 space-y-1">
                   {parsedData.slice(0, 5).map((row, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs">
@@ -203,7 +203,7 @@ export default function ImportLeadsPage() {
               {imported > 0 && (
                 <div className="rounded-lg bg-green-50 p-3 dark:bg-green-950">
                   <p className="text-sm text-green-600 dark:text-green-400">
-                    {imported} leads succesvol geimporteerd!
+                    {imported} {t("importLeads.successfullyImported")}
                   </p>
                 </div>
               )}
@@ -215,12 +215,12 @@ export default function ImportLeadsPage() {
                   className="flex-1"
                 >
                   {importing
-                    ? `Importeren... (${imported}/${parsedData.length})`
-                    : `${parsedData.length} leads importeren`}
+                    ? `${t("importLeads.importing")} (${imported}/${parsedData.length})`
+                    : `${parsedData.length} ${t("importLeads.importLeads")}`}
                 </Button>
                 {imported > 0 && (
                   <Button variant="outline" onClick={() => router.push("/leads")}>
-                    Naar leads
+                    {t("importLeads.goToLeads")}
                   </Button>
                 )}
               </div>

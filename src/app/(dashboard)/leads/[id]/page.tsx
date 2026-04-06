@@ -52,19 +52,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/components/language-provider";
 
-const statusLabels: Record<LeadStatus, string> = {
-  new: "Nieuw",
-  researched: "Onderzocht",
-  contacted: "Benaderd",
-  replied: "Gereageerd",
-  interested: "Ge\u00EFnteresseerd",
-  meeting_booked: "Meeting",
-  closed_won: "Gewonnen",
-  closed_lost: "Verloren",
-  unsubscribed: "Afgemeld",
-  bounced: "Bounced",
-};
+// statusLabels moved inside component to use t()
 
 export default function LeadDetailPage({
   params,
@@ -73,6 +63,21 @@ export default function LeadDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { t } = useTranslation();
+
+  const statusLabels: Record<LeadStatus, string> = {
+    new: t("status.new"),
+    researched: t("status.researched"),
+    contacted: t("status.contacted"),
+    replied: t("status.replied"),
+    interested: t("status.interested"),
+    meeting_booked: t("status.meeting_booked"),
+    closed_won: t("status.closed_won"),
+    closed_lost: t("status.closed_lost"),
+    unsubscribed: t("status.unsubscribed"),
+    bounced: t("status.bounced"),
+  };
+
   const [lead, setLead] = useState<Lead | null>(null);
   const [notes, setNotes] = useState<LeadNote[]>([]);
   const [tags, setTags] = useState<LeadTag[]>([]);
@@ -231,7 +236,7 @@ export default function LeadDetailPage({
 
   if (!lead) {
     return (
-      <div className="text-center text-neutral-500">Lead niet gevonden</div>
+      <div className="text-center text-neutral-500">{t("leadDetail.notFound")}</div>
     );
   }
 
@@ -252,7 +257,7 @@ export default function LeadDetailPage({
               {lead.first_name} {lead.last_name}
             </h2>
             <p className="text-neutral-500">
-              {lead.title} bij {lead.company}
+              {lead.title} {t("leadDetail.at")} {lead.company}
             </p>
           </div>
         </div>
@@ -263,11 +268,11 @@ export default function LeadDetailPage({
             disabled={researching}
           >
             <Sparkles className="mr-2 h-4 w-4" />
-            {researching ? "Onderzoeken..." : "AI Research"}
+            {researching ? t("leadDetail.researching") : t("leads.research")}
           </Button>
           <Button>
             <Send className="mr-2 h-4 w-4" />
-            Email sturen
+            {t("leadDetail.sendEmail")}
           </Button>
           <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
             <DialogTrigger
@@ -282,11 +287,9 @@ export default function LeadDetailPage({
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Lead verwijderen</DialogTitle>
+                <DialogTitle>{t("leadDetail.deleteTitle")}</DialogTitle>
                 <DialogDescription>
-                  Weet je zeker dat je {lead.first_name} {lead.last_name} wilt
-                  verwijderen? Dit verwijdert ook alle notities, tags en
-                  gerelateerde data. Dit kan niet ongedaan worden gemaakt.
+                  {t("leadDetail.deleteDesc1")} {lead.first_name} {lead.last_name} {t("leadDetail.deleteDesc2")}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -294,14 +297,14 @@ export default function LeadDetailPage({
                   variant="outline"
                   onClick={() => setShowDeleteDialog(false)}
                 >
-                  Annuleren
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={handleDelete}
                   disabled={deleting}
                 >
-                  {deleting ? "Verwijderen..." : "Definitief verwijderen"}
+                  {deleting ? t("leadDetail.deleting") : t("leadDetail.deleteConfirm")}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -314,14 +317,14 @@ export default function LeadDetailPage({
         <div className="col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Contact informatie</CardTitle>
+              <CardTitle>{t("leadDetail.contactInfo")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 {/* Email */}
                 <EditableField
                   icon={<Mail className="h-4 w-4 text-neutral-400" />}
-                  label="Email"
+                  label={t("leadDetail.email")}
                   value={lead.email}
                   field="email"
                   editing={editing}
@@ -334,7 +337,7 @@ export default function LeadDetailPage({
                 {/* Phone */}
                 <EditableField
                   icon={<Phone className="h-4 w-4 text-neutral-400" />}
-                  label="Telefoon"
+                  label={t("leadDetail.phone")}
                   value={lead.phone}
                   field="phone"
                   editing={editing}
@@ -347,7 +350,7 @@ export default function LeadDetailPage({
                 {/* Company */}
                 <EditableField
                   icon={<Building2 className="h-4 w-4 text-neutral-400" />}
-                  label="Bedrijf"
+                  label={t("leadDetail.company")}
                   value={lead.company}
                   field="company"
                   editing={editing}
@@ -360,7 +363,7 @@ export default function LeadDetailPage({
                 {/* Title */}
                 <EditableField
                   icon={<Briefcase className="h-4 w-4 text-neutral-400" />}
-                  label="Functie"
+                  label={t("leadDetail.jobTitle")}
                   value={lead.title}
                   field="title"
                   editing={editing}
@@ -373,7 +376,7 @@ export default function LeadDetailPage({
                 {/* Website */}
                 <EditableField
                   icon={<Globe className="h-4 w-4 text-neutral-400" />}
-                  label="Website"
+                  label={t("leadDetail.website")}
                   value={lead.website}
                   field="website"
                   editing={editing}
@@ -428,7 +431,7 @@ export default function LeadDetailPage({
                           rel="noopener noreferrer"
                           className="font-medium text-blue-600 hover:underline"
                         >
-                          Profiel bekijken
+                          {t("leadDetail.viewProfile")}
                         </a>
                         <button
                           onClick={() =>
@@ -444,7 +447,7 @@ export default function LeadDetailPage({
                         onClick={() => startEdit("linkedin_url", null)}
                         className="text-sm text-neutral-400 hover:text-neutral-600"
                       >
-                        + Toevoegen
+                        + {t("leadDetail.add")}
                       </button>
                     )}
                   </div>
@@ -462,7 +465,7 @@ export default function LeadDetailPage({
                   AI Research Data
                 </CardTitle>
                 <CardDescription>
-                  Automatisch verzameld door de Research Agent
+                  {t("leadDetail.enrichmentDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -507,12 +510,12 @@ export default function LeadDetailPage({
           {/* Notes */}
           <Card>
             <CardHeader>
-              <CardTitle>Notities</CardTitle>
+              <CardTitle>{t("leadDetail.notes")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
                 <Textarea
-                  placeholder="Voeg een notitie toe..."
+                  placeholder={t("leadDetail.addNotePlaceholder")}
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}
                   className="min-h-[80px]"
@@ -530,7 +533,7 @@ export default function LeadDetailPage({
               <Separator />
               <div className="space-y-3">
                 {notes.length === 0 ? (
-                  <p className="text-sm text-neutral-500">Nog geen notities</p>
+                  <p className="text-sm text-neutral-500">{t("leadDetail.noNotes")}</p>
                 ) : (
                   notes.map((note) => (
                     <div
@@ -561,7 +564,7 @@ export default function LeadDetailPage({
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Status</CardTitle>
+              <CardTitle>{t("campaignDetail.status")}</CardTitle>
             </CardHeader>
             <CardContent>
               <Select
@@ -584,17 +587,17 @@ export default function LeadDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>ICP Score</CardTitle>
+              <CardTitle>{t("leadDetail.icpScore")}</CardTitle>
             </CardHeader>
             <CardContent>
               {lead.icp_score !== null ? (
                 <div className="text-center">
                   <span className="text-4xl font-bold">{lead.icp_score}%</span>
-                  <p className="mt-1 text-sm text-neutral-500">Match score</p>
+                  <p className="mt-1 text-sm text-neutral-500">{t("leadDetail.matchScore")}</p>
                 </div>
               ) : (
                 <p className="text-center text-sm text-neutral-500">
-                  Nog niet gescoord. Voer AI Research uit.
+                  {t("leadDetail.notScoredYet")}
                 </p>
               )}
             </CardContent>
@@ -611,7 +614,7 @@ export default function LeadDetailPage({
             <CardContent className="space-y-3">
               <div className="flex flex-wrap gap-1">
                 {tags.length === 0 ? (
-                  <p className="text-sm text-neutral-500">Geen tags</p>
+                  <p className="text-sm text-neutral-500">{t("leadDetail.noTags")}</p>
                 ) : (
                   tags.map((tag) => (
                     <Badge
@@ -632,7 +635,7 @@ export default function LeadDetailPage({
               </div>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Tag toevoegen..."
+                  placeholder={t("leadDetail.addTagPlaceholder")}
                   value={newTag}
                   onChange={(e) => setNewTag(e.target.value)}
                   onKeyDown={(e) => {
@@ -658,29 +661,29 @@ export default function LeadDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>Details</CardTitle>
+              <CardTitle>{t("leadDetail.details")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-neutral-500">Industrie</span>
+                <span className="text-neutral-500">{t("leadDetail.industry")}</span>
                 <span>{lead.industry || "-"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-500">Werknemers</span>
+                <span className="text-neutral-500">{t("leadDetail.employees")}</span>
                 <span>{lead.employee_count || "-"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-500">Bron</span>
+                <span className="text-neutral-500">{t("leadDetail.source")}</span>
                 <span>{lead.source || "-"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-500">Toegevoegd</span>
+                <span className="text-neutral-500">{t("campaignDetail.added")}</span>
                 <span>
                   {new Date(lead.created_at).toLocaleDateString("nl-NL")}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-500">Laatst bijgewerkt</span>
+                <span className="text-neutral-500">{t("campaignDetail.lastUpdated")}</span>
                 <span>
                   {new Date(lead.updated_at).toLocaleDateString("nl-NL")}
                 </span>

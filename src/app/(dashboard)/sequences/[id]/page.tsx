@@ -40,6 +40,7 @@ import type {
   EmailTemplate,
   Channel,
 } from "@/types/database";
+import { useTranslation } from "@/components/language-provider";
 
 // ── Local types ──────────────────────────────
 
@@ -67,20 +68,9 @@ const statusColors: Record<string, string> = {
   completed: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
 };
 
-const statusLabels: Record<string, string> = {
-  active: "Actief",
-  draft: "Concept",
-  paused: "Gepauzeerd",
-  completed: "Voltooid",
-};
+// statusLabels moved inside component to use t()
 
-function formatDelay(days: number, hours: number): string {
-  if (days === 0 && hours === 0) return "Dag 0";
-  const parts: string[] = [];
-  if (days > 0) parts.push(`Dag ${days}`);
-  if (hours > 0) parts.push(`${hours} uur`);
-  return parts.join(" + ");
-}
+// formatDelay moved inside component to use t()
 
 const channelIcon = (channel: Channel) =>
   channel === "email" ? (
@@ -108,6 +98,22 @@ export default function SequenceEditorPage({
 }) {
   const { id } = use(params);
   const supabase = createClient();
+  const { t } = useTranslation();
+
+  const statusLabels: Record<string, string> = {
+    active: t("common.active"),
+    draft: t("common.draft"),
+    paused: t("common.paused"),
+    completed: t("common.completed"),
+  };
+
+  function formatDelay(days: number, hours: number): string {
+    if (days === 0 && hours === 0) return `${t("sequenceDetail.day")} 0`;
+    const parts: string[] = [];
+    if (days > 0) parts.push(`${t("sequenceDetail.day")} ${days}`);
+    if (hours > 0) parts.push(`${hours} ${t("sequenceDetail.hour")}`);
+    return parts.join(" + ");
+  }
 
   // ── State ──
   const [sequence, setSequence] = useState<SequenceWithCampaign | null>(null);
@@ -237,7 +243,7 @@ export default function SequenceEditorPage({
   }
 
   async function handleDeleteStep(stepId: string) {
-    if (!confirm("Weet je zeker dat je deze stap wilt verwijderen?")) return;
+    if (!confirm(t("sequenceDetail.confirmDeleteStep"))) return;
 
     await fetch(`/api/sequences/${id}/steps?step_id=${stepId}`, {
       method: "DELETE",
@@ -262,10 +268,10 @@ export default function SequenceEditorPage({
         <Link href="/sequences">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Terug
+            {t("sequenceDetail.back")}
           </Button>
         </Link>
-        <p className="text-center text-neutral-500">Sequence niet gevonden.</p>
+        <p className="text-center text-neutral-500">{t("sequenceDetail.notFound")}</p>
       </div>
     );
   }
@@ -338,14 +344,14 @@ export default function SequenceEditorPage({
       {/* ── Steps timeline ── */}
       <div className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-950">
         <h2 className="mb-6 text-sm font-medium text-neutral-500 dark:text-neutral-400">
-          Stappen ({steps.length})
+          {t("sequenceDetail.stepsCount")} ({steps.length})
         </h2>
 
         {steps.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-12 text-neutral-400">
             <Mail className="h-10 w-10" />
             <p className="text-sm">
-              Nog geen stappen. Voeg je eerste stap toe.
+              {t("sequenceDetail.noStepsYet")}
             </p>
           </div>
         ) : (
@@ -416,36 +422,36 @@ export default function SequenceEditorPage({
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger render={<Button variant="outline" />} onClick={openAddDialog}>
               <Plus className="mr-2 h-4 w-4" />
-              Stap toevoegen
+              {t("sequences.addStep")}
             </DialogTrigger>
 
             <DialogContent>
               <form onSubmit={handleSaveStep}>
                 <DialogHeader>
                   <DialogTitle>
-                    {editingStep ? "Stap bewerken" : "Stap toevoegen"}
+                    {editingStep ? t("sequenceDetail.editStep") : t("sequences.addStep")}
                   </DialogTitle>
                   <DialogDescription>
                     {editingStep
-                      ? `Bewerk stap ${editingStep.step_number} van de sequence.`
-                      : `Voeg een nieuwe stap toe aan de sequence.`}
+                      ? `${t("sequenceDetail.editStepDesc")} ${editingStep.step_number}`
+                      : t("sequenceDetail.addStepDesc")}
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="grid gap-4 py-4">
                   {/* Step number (read-only info) */}
                   <div className="space-y-2">
-                    <Label>Stap</Label>
+                    <Label>{t("sequenceDetail.step")}</Label>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">
                       {editingStep
-                        ? `Stap ${editingStep.step_number}`
-                        : `Stap ${steps.length + 1}`}
+                        ? `${t("sequenceDetail.step")} ${editingStep.step_number}`
+                        : `${t("sequenceDetail.step")} ${steps.length + 1}`}
                     </p>
                   </div>
 
                   {/* Channel */}
                   <div className="space-y-2">
-                    <Label>Kanaal</Label>
+                    <Label>{t("sequences.channel")}</Label>
                     <Select
                       value={form.channel}
                       onValueChange={(v) =>
@@ -453,7 +459,7 @@ export default function SequenceEditorPage({
                       }
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Selecteer kanaal" />
+                        <SelectValue placeholder={t("sequenceDetail.selectChannel")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="email">
@@ -470,11 +476,11 @@ export default function SequenceEditorPage({
 
                   {/* Delay */}
                   <div className="space-y-2">
-                    <Label>Vertraging</Label>
+                    <Label>{t("sequences.delay")}</Label>
                     <div className="flex items-center gap-3">
                       <div className="flex-1">
                         <Label className="mb-1 text-xs text-neutral-500">
-                          Dagen
+                          {t("newCampaign.days")}
                         </Label>
                         <Input
                           type="number"
@@ -491,7 +497,7 @@ export default function SequenceEditorPage({
                       </div>
                       <div className="flex-1">
                         <Label className="mb-1 text-xs text-neutral-500">
-                          Uren
+                          {t("newCampaign.hours")}
                         </Label>
                         <Input
                           type="number"
@@ -512,7 +518,7 @@ export default function SequenceEditorPage({
 
                   {/* Template */}
                   <div className="space-y-2">
-                    <Label>Template</Label>
+                    <Label>{t("sequenceDetail.template")}</Label>
                     <Select
                       value={form.template_id}
                       onValueChange={(v) =>
@@ -520,7 +526,7 @@ export default function SequenceEditorPage({
                       }
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Selecteer template (optioneel)" />
+                        <SelectValue placeholder={t("sequenceDetail.selectTemplate")} />
                       </SelectTrigger>
                       <SelectContent>
                         {templates.map((tpl) => (
@@ -539,13 +545,13 @@ export default function SequenceEditorPage({
                     variant="outline"
                     onClick={() => setDialogOpen(false)}
                   >
-                    Annuleren
+                    {t("common.cancel")}
                   </Button>
                   <Button type="submit" disabled={saving}>
                     {saving ? (
                       <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                     ) : null}
-                    {editingStep ? "Opslaan" : "Toevoegen"}
+                    {editingStep ? t("common.save") : t("sequenceDetail.add")}
                   </Button>
                 </DialogFooter>
               </form>

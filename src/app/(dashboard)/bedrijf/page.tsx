@@ -31,8 +31,10 @@ import {
   Info,
   Sparkles,
 } from "lucide-react";
+import { useTranslation } from "@/components/language-provider";
 
 export default function BedrijfsprofielPage() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -240,11 +242,10 @@ export default function BedrijfsprofielPage() {
         <div>
           <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight">
             <Building2 className="h-5 w-5 text-primary" />
-            Bedrijfsprofiel
+            {t("company.title")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Alles over je bedrijf op een plek. De AI agents gebruiken dit bij
-            elke email.
+            {t("company.desc")}
           </p>
         </div>
         <Button onClick={handleSave} disabled={saving}>
@@ -255,7 +256,7 @@ export default function BedrijfsprofielPage() {
           ) : (
             <Save className="mr-2 h-4 w-4" />
           )}
-          {saved ? "Opgeslagen!" : "Opslaan"}
+          {saved ? t("company.saved") : t("common.save")}
         </Button>
       </div>
 
@@ -265,12 +266,10 @@ export default function BedrijfsprofielPage() {
           <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <div className="text-sm">
             <p className="font-medium text-foreground">
-              Dit profiel wordt door alle AI agents gelezen
+              {t("company.aiInfo")}
             </p>
             <p className="mt-1 text-muted-foreground">
-              Hoe meer je invult, hoe beter de AI je emails personaliseert.
-              De Writer Agent gebruikt je USPs, klantcases en
-              concurrentievoordelen om overtuigende emails te schrijven.
+              {t("company.aiInfoDesc")}
             </p>
           </div>
         </CardContent>
@@ -281,11 +280,10 @@ export default function BedrijfsprofielPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm">
             <Globe className="h-4 w-4 text-primary" />
-            Auto-invullen vanaf website
+            {t("company.autoFill")}
           </CardTitle>
           <CardDescription>
-            Vul je website URL in en de AI analyseert je site om het profiel
-            automatisch in te vullen. Je kunt daarna alles nog aanpassen.
+            {t("company.autoFillDesc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -303,12 +301,12 @@ export default function BedrijfsprofielPage() {
               {analyzing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Analyseren...
+                  {t("company.analyzing")}
                 </>
               ) : (
                 <>
                   <Sparkles className="mr-2 h-4 w-4" />
-                  AI Auto-invullen
+                  {t("company.autoFillBtn")}
                 </>
               )}
             </Button>
@@ -335,15 +333,15 @@ export default function BedrijfsprofielPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Building2 className="h-4 w-4 text-primary" />
-                Basisinformatie
+                {t("company.basic")}
               </CardTitle>
               <CardDescription>
-                Naam en website van je bedrijf.
+                {t("company.basicDesc")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="company-name">Bedrijfsnaam</Label>
+                <Label htmlFor="company-name">{t("company.name")}</Label>
                 <Input
                   id="company-name"
                   placeholder="ASSET+ Fleet Solutions"
@@ -354,7 +352,7 @@ export default function BedrijfsprofielPage() {
               <div className="space-y-2">
                 <Label htmlFor="website" className="flex items-center gap-2">
                   <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                  Website
+                  {t("company.website")}
                 </Label>
                 <Input
                   id="website"
@@ -365,7 +363,7 @@ export default function BedrijfsprofielPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">
-                  Wat doet je bedrijf? (1-3 zinnen)
+                  {t("company.whatDoYouDo")}
                 </Label>
                 <Textarea
                   id="description"
@@ -383,16 +381,16 @@ export default function BedrijfsprofielPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Package className="h-4 w-4 text-primary" />
-                Product / Dienst
+                {t("company.product")}
               </CardTitle>
               <CardDescription>
-                Wat verkoop je precies? Wees specifiek.
+                {t("company.productDesc")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="products">
-                  Productbeschrijving
+                  {t("company.productLabel")}
                 </Label>
                 <Textarea
                   id="products"
@@ -404,7 +402,7 @@ export default function BedrijfsprofielPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="pricing">
-                  Prijsindicatie (optioneel, intern)
+                  {t("company.pricing")}
                 </Label>
                 <Textarea
                   id="pricing"
@@ -422,13 +420,13 @@ export default function BedrijfsprofielPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Target className="h-4 w-4 text-primary" />
-                Doelmarkt
+                {t("company.targetMarket")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 <Label htmlFor="regions">
-                  Regio&apos;s en markten
+                  {t("company.regions")}
                 </Label>
                 <Textarea
                   id="regions"
@@ -449,11 +447,10 @@ export default function BedrijfsprofielPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Trophy className="h-4 w-4 text-primary" />
-                Unique Selling Points
+                {t("company.usps")}
               </CardTitle>
               <CardDescription>
-                Waarom moeten klanten bij jou kopen? De AI gebruikt deze
-                punten in outreach emails.
+                {t("company.uspsDesc")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -505,11 +502,10 @@ export default function BedrijfsprofielPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Users className="h-4 w-4 text-primary" />
-                Klantcases & Referenties
+                {t("company.clients")}
               </CardTitle>
               <CardDescription>
-                Welke bedrijven gebruiken jouw product al? Dit vergroot
-                geloofwaardigheid.
+                {t("company.clientsDesc")}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -527,10 +523,10 @@ export default function BedrijfsprofielPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Trophy className="h-4 w-4 text-primary" />
-                Concurrentievoordeel
+                {t("company.competitive")}
               </CardTitle>
               <CardDescription>
-                Wat maakt jou anders dan de concurrentie?
+                {t("company.competitiveDesc")}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -548,15 +544,15 @@ export default function BedrijfsprofielPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">
                 <MessageSquare className="h-4 w-4 text-primary" />
-                Communicatiestijl
+                {t("company.tone")}
               </CardTitle>
               <CardDescription>
-                Hoe wil je dat de AI communiceert namens jou?
+                {t("company.toneDesc")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="tone">Tone of voice</Label>
+                <Label htmlFor="tone">{t("company.toneLabel")}</Label>
                 <Textarea
                   id="tone"
                   placeholder="Professioneel maar persoonlijk. Niet pushy — altijd waarde-eerst benadering. Toon expertise zonder arrogant te zijn. Gebruik concrete cijfers (35% besparing, 55 pallets). Engels voor GCC markt."
@@ -573,10 +569,10 @@ export default function BedrijfsprofielPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Info className="h-4 w-4 text-primary" />
-                Extra context
+                {t("company.extra")}
               </CardTitle>
               <CardDescription>
-                Alles wat de AI nog moet weten. Vrij tekstveld.
+                {t("company.extraDesc")}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -606,7 +602,7 @@ export default function BedrijfsprofielPage() {
           ) : (
             <Save className="mr-2 h-4 w-4" />
           )}
-          {saved ? "Opgeslagen!" : "Profiel opslaan"}
+          {saved ? t("company.saved") : t("company.save")}
         </Button>
       </div>
     </div>

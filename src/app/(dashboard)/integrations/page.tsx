@@ -34,6 +34,7 @@ import {
   Settings2,
   RefreshCw,
 } from "lucide-react";
+import { useTranslation } from "@/components/language-provider";
 
 interface IntegrationConfig {
   key: string;
@@ -45,109 +46,107 @@ interface IntegrationConfig {
   fields: { key: string; label: string; placeholder: string; type?: string }[];
 }
 
-const integrationConfigs: IntegrationConfig[] = [
+interface IntegrationConfigDef {
+  key: string;
+  name: string;
+  descKey: string;
+  icon: typeof Calendar;
+  type: IntegrationType["type"];
+  categoryKey: string;
+  fields: { key: string; labelKey: string; placeholder: string; type?: string }[];
+}
+
+const integrationConfigsDef = [
   {
     key: "google_calendar",
     name: "Google Calendar",
-    description:
-      "Synchroniseer meetings en beschikbaarheid. Automatisch meetings plannen vanuit ProLead.",
+    descKey: "integrations.googleCalendarDesc",
     icon: Calendar,
-    type: "google_calendar",
-    category: "Agenda",
+    type: "google_calendar" as IntegrationType["type"],
+    categoryKey: "integrations.catAgenda",
     fields: [
-      {
-        key: "client_id",
-        label: "Client ID",
-        placeholder: "Google OAuth Client ID",
-      },
-      {
-        key: "client_secret",
-        label: "Client Secret",
-        placeholder: "Google OAuth Client Secret",
-        type: "password",
-      },
+      { key: "client_id", labelKey: "integrations.clientId", placeholder: "Google OAuth Client ID" },
+      { key: "client_secret", labelKey: "integrations.clientSecret", placeholder: "Google OAuth Client Secret", type: "password" },
     ],
   },
   {
     key: "linkedin",
     name: "LinkedIn / HeyReach",
-    description:
-      "Koppel je LinkedIn account via HeyReach voor profielverrijking en connectie-tracking.",
+    descKey: "integrations.linkedinDesc",
     icon: Link2,
-    type: "linkedin",
-    category: "Sociaal",
+    type: "linkedin" as IntegrationType["type"],
+    categoryKey: "integrations.catSocial",
     fields: [
-      {
-        key: "api_key",
-        label: "HeyReach API Key",
-        placeholder: "Je HeyReach API key",
-        type: "password",
-      },
+      { key: "api_key", labelKey: "integrations.heyreachApiKey", placeholder: "HeyReach API Key", type: "password" },
     ],
   },
   {
     key: "smtp",
     name: "Email SMTP",
-    description:
-      "Verbind je eigen SMTP-server voor het versturen van emails via je eigen domein.",
+    descKey: "integrations.smtpDesc",
     icon: Mail,
-    type: "smtp",
-    category: "Email",
+    type: "smtp" as IntegrationType["type"],
+    categoryKey: "integrations.catEmail",
     fields: [
-      { key: "host", label: "SMTP Host", placeholder: "smtp.example.com" },
-      { key: "port", label: "Port", placeholder: "587" },
-      { key: "username", label: "Gebruikersnaam", placeholder: "user@example.com" },
-      {
-        key: "password",
-        label: "Wachtwoord",
-        placeholder: "SMTP wachtwoord",
-        type: "password",
-      },
+      { key: "host", labelKey: "integrations.smtpHost", placeholder: "smtp.example.com" },
+      { key: "port", labelKey: "integrations.smtpPort", placeholder: "587" },
+      { key: "username", labelKey: "integrations.username", placeholder: "user@example.com" },
+      { key: "password", labelKey: "integrations.password", placeholder: "SMTP", type: "password" },
     ],
   },
   {
     key: "resend",
     name: "Resend",
-    description:
-      "Gebruik Resend als email API voor betrouwbare aflevering en tracking.",
+    descKey: "integrations.resendDesc",
     icon: Send,
-    type: "resend",
-    category: "Email",
+    type: "resend" as IntegrationType["type"],
+    categoryKey: "integrations.catEmail",
     fields: [
-      {
-        key: "api_key",
-        label: "Resend API Key",
-        placeholder: "re_...",
-        type: "password",
-      },
+      { key: "api_key", labelKey: "integrations.resendApiKey", placeholder: "re_...", type: "password" },
     ],
   },
 ];
 
-const statusConfig: Record<
+const statusConfigColors: Record<
   string,
-  { label: string; color: string; icon: typeof CheckCircle2 }
+  { labelKey: string; color: string; icon: typeof CheckCircle2 }
 > = {
   connected: {
-    label: "Verbonden",
+    labelKey: "integrations.connected",
     color:
       "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
     icon: CheckCircle2,
   },
   disconnected: {
-    label: "Niet verbonden",
+    labelKey: "integrations.disconnected",
     color:
       "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
     icon: XCircle,
   },
   error: {
-    label: "Fout",
+    labelKey: "integrations.error",
     color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
     icon: XCircle,
   },
 };
 
 export default function IntegrationsPage() {
+  const { t } = useTranslation();
+
+  const integrationConfigs: IntegrationConfig[] = integrationConfigsDef.map((def) => ({
+    key: def.key,
+    name: def.name,
+    description: t(def.descKey),
+    icon: def.icon,
+    type: def.type,
+    category: t(def.categoryKey),
+    fields: def.fields.map((f) => ({ key: f.key, label: t(f.labelKey), placeholder: f.placeholder, type: f.type })),
+  }));
+
+  const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = Object.fromEntries(
+    Object.entries(statusConfigColors).map(([k, v]) => [k, { label: t(v.labelKey), color: v.color, icon: v.icon }]),
+  );
+
   const [dbIntegrations, setDbIntegrations] = useState<IntegrationType[]>(
     [],
   );
@@ -261,29 +260,29 @@ export default function IntegrationsPage() {
       <div>
         <h1 className="flex items-center gap-2 text-xl font-bold">
           <Plug className="h-5 w-5" />
-          Integraties
+          {t("integrations.title")}
         </h1>
         <p className="text-sm text-neutral-500">
-          Beheer je koppelingen met externe diensten.
+          {t("integrations.subtitle")}
         </p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-          <p className="text-sm text-neutral-500">Totaal integraties</p>
+          <p className="text-sm text-neutral-500">{t("integrations.totalIntegrations")}</p>
           <p className="text-2xl font-bold text-neutral-900 dark:text-white">
             {integrationConfigs.length}
           </p>
         </div>
         <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-          <p className="text-sm text-neutral-500">Verbonden</p>
+          <p className="text-sm text-neutral-500">{t("integrations.connected")}</p>
           <p className="text-2xl font-bold text-green-600">
             {connected.length}
           </p>
         </div>
         <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-          <p className="text-sm text-neutral-500">Niet verbonden</p>
+          <p className="text-sm text-neutral-500">{t("integrations.disconnected")}</p>
           <p className="text-2xl font-bold text-neutral-400">
             {disconnected.length}
           </p>
@@ -342,7 +341,7 @@ export default function IntegrationsPage() {
                 </p>
                 {dbInt?.last_sync_at && (
                   <p className="text-[10px] text-neutral-400">
-                    Laatste sync:{" "}
+                    {t("integrations.lastSync")}{" "}
                     {new Date(dbInt.last_sync_at).toLocaleString("nl-NL")}
                   </p>
                 )}
@@ -354,7 +353,7 @@ export default function IntegrationsPage() {
                       onClick={() => openConfig(config)}
                     >
                       <Settings2 className="mr-2 h-3 w-3" />
-                      Instellingen
+                      {t("integrations.settings")}
                     </Button>
                   )}
                   {!isConnected && (
@@ -364,7 +363,7 @@ export default function IntegrationsPage() {
                       onClick={() => openConfig(config)}
                     >
                       <Plug className="mr-2 h-3 w-3" />
-                      Verbinden
+                      {t("integrations.connect")}
                     </Button>
                   )}
                 </div>
@@ -382,10 +381,9 @@ export default function IntegrationsPage() {
         >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{configDialog.name} configureren</DialogTitle>
+              <DialogTitle>{t("integrations.configure")} {configDialog.name}</DialogTitle>
               <DialogDescription>
-                Voer de vereiste gegevens in om {configDialog.name} te
-                verbinden.
+                {t("integrations.configureDesc")} {configDialog.name}.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -412,10 +410,10 @@ export default function IntegrationsPage() {
                 variant="outline"
                 onClick={() => setConfigDialog(null)}
               >
-                Annuleren
+                {t("common.cancel")}
               </Button>
               <Button onClick={saveConfig} disabled={saving}>
-                {saving ? "Opslaan..." : "Verbinden"}
+                {saving ? t("common.loading") : t("integrations.connect")}
               </Button>
             </DialogFooter>
           </DialogContent>
