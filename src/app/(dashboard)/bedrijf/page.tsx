@@ -190,8 +190,9 @@ export default function BedrijfsprofielPage() {
       if (p.target_regions) setTargetRegions(p.target_regions);
       if (p.tone_of_voice) setToneOfVoice(p.tone_of_voice);
       if (p.extra_context) setExtraContext(p.extra_context);
-    } catch {
-      setAnalyzeError("Kon de website niet analyseren. Controleer de URL.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Onbekende fout";
+      setAnalyzeError(`Fout: ${msg}`);
     } finally {
       setAnalyzing(false);
     }
