@@ -168,7 +168,24 @@ export default function BedrijfsprofielPage() {
         body: JSON.stringify({ url }),
       });
 
-      const json = await res.json();
+      const text = await res.text();
+
+      if (!text) {
+        setAnalyzeError(
+          "Server gaf een leeg antwoord. Mogelijk is de functie gecrashed. Probeer het opnieuw.",
+        );
+        setAnalyzing(false);
+        return;
+      }
+
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        setAnalyzeError(`Server antwoord was geen geldige JSON: ${text.slice(0, 200)}`);
+        setAnalyzing(false);
+        return;
+      }
 
       if (!res.ok) {
         setAnalyzeError(json.error || "Analyse mislukt");
