@@ -1,22 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
-  // Auth check
-  let userId: string;
-  try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    userId = user.id;
-  } catch {
-    return NextResponse.json({ error: "Auth check mislukt" }, { status: 401 });
-  }
-
   // Parse body
   let url: string;
   try {
