@@ -167,7 +167,7 @@ export default function BedrijfsprofielPage() {
       const res = await fetch("/api/ai/analyze-website", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, language: lang }),
       });
 
       const text = await res.text();

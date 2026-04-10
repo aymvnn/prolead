@@ -5,9 +5,11 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   // Parse body
   let url: string;
+  let lang = "en";
   try {
     const body = await request.json();
     url = body.url;
+    lang = body.language || "en";
   } catch {
     return NextResponse.json({ error: "Ongeldige request body" }, { status: 400 });
   }
@@ -86,7 +88,7 @@ export async function POST(request: NextRequest) {
         temperature: 0.2,
         system: `Extract company info from website text. Reply ONLY with valid JSON:
 {"company_name":"","description":"","products":"","usps":["","",""],"pricing_info":"","client_cases":"","competitive_advantage":"","target_regions":"","tone_of_voice":"","extra_context":""}
-Be specific with numbers/specs. Write in Dutch. Empty string if unknown.`,
+Be specific with numbers/specs. Write in ${lang === "nl" ? "Dutch" : "English"}. Empty string if unknown.`,
         messages: [
           { role: "user", content: `URL: ${fetchUrl}\n\n${websiteText}` },
         ],
