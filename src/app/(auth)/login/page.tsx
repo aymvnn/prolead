@@ -44,7 +44,7 @@ export default function LoginPage() {
           return;
         }
 
-        router.push("/leads");
+        router.push("/onboarding");
         router.refresh();
       } catch (err) {
         const message =

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { ICPProfile } from "@/types/database";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Sparkles,
   Copy,
   Check,
@@ -35,6 +44,9 @@ import {
   Loader2,
   Info,
   ArrowRight,
+  Upload,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { useTranslation } from "@/components/language-provider";
 
@@ -60,6 +72,19 @@ export default function LeadPrompterPage() {
   const [language, setLanguage] = useState("en");
   const [extraInstructions, setExtraInstructions] = useState("");
   const [copied, setCopied] = useState(false);
+
+  // Direct CSV paste state
+  const [csvText, setCsvText] = useState("");
+  const [parsedLeads, setParsedLeads] = useState<
+    { data: Record<string, string>; valid: boolean; errors: string[] }[]
+  >([]);
+  const [showParsed, setShowParsed] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    success: boolean;
+    count: number;
+    errors: string[];
+  } | null>(null);
 
   const supabase = createClient();
 
@@ -178,6 +203,119 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
     await navigator.clipboard.writeText(generatedPrompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  const CSV_COLUMNS = [
+    "first_name",
+    "last_name",
+    "email",
+    "company",
+    "title",
+    "linkedin_url",
+    "phone",
+    "website",
+    "industry",
+    "icp_score",
+  ];
+  const REQUIRED_COLUMNS = ["first_name", "last_name", "email", "company"];
+
+  function handleParseCSV() {
+    setImportResult(null);
+    const lines = csvText
+      .trim()
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+
+    if (lines.length < 2) {
+      setParsedLeads([]);
+      setShowParsed(true);
+      return;
+    }
+
+    // Detect header row
+    const headerLine = lines[0].toLowerCase();
+    const hasHeader = headerLine.includes("first_name") || headerLine.includes("email");
+    const headers = hasHeader
+      ? lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/"/g, ""))
+      : CSV_COLUMNS;
+    const dataLines = hasHeader ? lines.slice(1) : lines;
+
+    const parsed = dataLines.map((line) => {
+      const values = line.split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
+      const data: Record<string, string> = {};
+      headers.forEach((h, i) => {
+        if (CSV_COLUMNS.includes(h)) {
+          data[h] = values[i] || "";
+        }
+      });
+
+      const errors: string[] = [];
+      for (const req of REQUIRED_COLUMNS) {
+        if (!data[req]) errors.push(req);
+      }
+      // Basic email validation
+      if (data.email && !data.email.includes("@")) {
+        errors.push("email (invalid)");
+      }
+
+      return { data, valid: errors.length === 0, errors };
+    });
+
+    setParsedLeads(parsed);
+    setShowParsed(true);
+  }
+
+  const validLeads = parsedLeads.filter((l) => l.valid);
+  const invalidLeads = parsedLeads.filter((l) => !l.valid);
+
+  async function handleImportLeads() {
+    if (validLeads.length === 0) return;
+    setImporting(true);
+    setImportResult(null);
+
+    try {
+      const rows = validLeads.map((l) => ({
+        first_name: l.data.first_name,
+        last_name: l.data.last_name,
+        email: l.data.email,
+        company: l.data.company,
+        title: l.data.title || null,
+        linkedin_url: l.data.linkedin_url || null,
+        phone: l.data.phone || null,
+        website: l.data.website || null,
+        industry: l.data.industry || null,
+        icp_score: l.data.icp_score ? parseInt(l.data.icp_score, 10) || null : null,
+        status: "new" as const,
+      }));
+
+      const { error } = await supabase.from("leads").insert(rows);
+
+      if (error) {
+        setImportResult({
+          success: false,
+          count: 0,
+          errors: [error.message],
+        });
+      } else {
+        setImportResult({
+          success: true,
+          count: rows.length,
+          errors: [],
+        });
+        setCsvText("");
+        setParsedLeads([]);
+        setShowParsed(false);
+      }
+    } catch (err) {
+      setImportResult({
+        success: false,
+        count: 0,
+        errors: [(err as Error).message],
+      });
+    } finally {
+      setImporting(false);
+    }
   }
 
   if (loading) {
@@ -480,6 +618,169 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
           </Card>
         </div>
       </div>
+
+      {/* Direct CSV Paste Card */}
+      <Card className="border-primary/30 bg-white dark:bg-neutral-950">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Upload className="h-4 w-4 text-primary" />
+            {t("prompter.directImport")}
+          </CardTitle>
+          <CardDescription>
+            {t("prompter.directImportDesc")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Textarea
+            value={csvText}
+            onChange={(e) => setCsvText(e.target.value)}
+            rows={8}
+            placeholder={t("prompter.pasteCSV")}
+            className="font-mono text-xs"
+          />
+          <Button
+            onClick={handleParseCSV}
+            disabled={!csvText.trim()}
+          >
+            {t("prompter.parseImport")}
+          </Button>
+
+          {/* Import success message */}
+          {importResult?.success && (
+            <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/20">
+              <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
+              <div className="flex-1 text-sm text-green-800 dark:text-green-300">
+                <p className="font-medium">
+                  {importResult.count} {t("prompter.importSuccess")}
+                </p>
+              </div>
+              <Link href="/leads">
+                <Button variant="outline" size="sm">
+                  {t("prompter.goToLeads")}
+                </Button>
+              </Link>
+            </div>
+          )}
+
+          {/* Import error */}
+          {importResult && !importResult.success && (
+            <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/20">
+              <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+              <div className="text-sm text-red-800 dark:text-red-300">
+                <p className="font-medium">{t("prompter.importError")}</p>
+                {importResult.errors.map((err, i) => (
+                  <p key={i} className="mt-1">{err}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Parsed preview */}
+          {showParsed && parsedLeads.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">
+                {t("prompter.previewTitle")}
+              </h4>
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16"></TableHead>
+                      <TableHead>{t("leads.firstName")}</TableHead>
+                      <TableHead>{t("leads.lastName")}</TableHead>
+                      <TableHead>{t("leadDetail.email")}</TableHead>
+                      <TableHead>{t("leads.company")}</TableHead>
+                      <TableHead>{t("leads.icpScore")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {parsedLeads.slice(0, 5).map((lead, i) => (
+                      <TableRow key={i}>
+                        <TableCell>
+                          {lead.valid ? (
+                            <Badge
+                              variant="secondary"
+                              className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                            >
+                              <CheckCircle2 className="mr-1 h-3 w-3" />
+                              {t("prompter.valid")}
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="secondary"
+                              className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                            >
+                              <XCircle className="mr-1 h-3 w-3" />
+                              {t("prompter.invalid")}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>{lead.data.first_name || "-"}</TableCell>
+                        <TableCell>{lead.data.last_name || "-"}</TableCell>
+                        <TableCell className="max-w-40 truncate">
+                          {lead.data.email || "-"}
+                        </TableCell>
+                        <TableCell>{lead.data.company || "-"}</TableCell>
+                        <TableCell>{lead.data.icp_score || "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Invalid row errors */}
+              {invalidLeads.length > 0 && (
+                <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/20">
+                  <p className="font-medium text-yellow-800 dark:text-yellow-300">
+                    {invalidLeads.length} {t("importLeads.rowsSkipped")}
+                  </p>
+                  {invalidLeads.slice(0, 3).map((lead, i) => (
+                    <p
+                      key={i}
+                      className="mt-1 text-yellow-700 dark:text-yellow-400"
+                    >
+                      {t("prompter.rowFailed")}: {t("prompter.missingFields")} — {lead.errors.join(", ")}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {/* No valid leads */}
+              {validLeads.length === 0 && (
+                <p className="text-sm text-red-600">{t("prompter.noValidLeads")}</p>
+              )}
+
+              {/* Import button */}
+              {validLeads.length > 0 && (
+                <Button
+                  onClick={handleImportLeads}
+                  disabled={importing}
+                  className="bg-gradient-brand text-white shadow-brand hover:opacity-90"
+                >
+                  {importing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t("prompter.importing")}
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      {validLeads.length} {t("prompter.importLeads")}
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* No results from parse */}
+          {showParsed && parsedLeads.length === 0 && (
+            <p className="text-sm text-neutral-500">
+              {t("prompter.noValidLeads")}
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

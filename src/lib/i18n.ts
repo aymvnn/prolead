@@ -17,6 +17,24 @@ const translations: Record<string, Record<string, string>> = {
 
   // ── Header ──────────────────────────────────
   "header.search": { nl: "Zoeken...", en: "Search..." },
+  "header.searching": { nl: "Zoeken...", en: "Searching..." },
+  "header.noResults": { nl: "Geen resultaten gevonden", en: "No results found" },
+
+  // ── Onboarding ─────────────────────────────
+  "nav.onboarding": { nl: "Aan de slag", en: "Get Started" },
+  "onboarding.title": { nl: "Aan de slag met PROLEAD", en: "Get Started with PROLEAD" },
+  "onboarding.subtitle": { nl: "Volg deze stappen om je account in te richten", en: "Follow these steps to set up your account" },
+  "onboarding.step1.title": { nl: "Bedrijfsprofiel", en: "Company Profile" },
+  "onboarding.step1.desc": { nl: "Vul je bedrijfsinformatie in zodat AI gepersonaliseerde emails kan schrijven", en: "Fill in your company information so AI can write personalized emails" },
+  "onboarding.step2.title": { nl: "ICP Profiel", en: "ICP Profile" },
+  "onboarding.step2.desc": { nl: "Definieer je ideale klantprofiel", en: "Define your ideal customer profile" },
+  "onboarding.step3.title": { nl: "Leads importeren", en: "Import Leads" },
+  "onboarding.step3.desc": { nl: "Importeer je eerste leads via CSV", en: "Import your first leads via CSV" },
+  "onboarding.step4.title": { nl: "Campagne aanmaken", en: "Create Campaign" },
+  "onboarding.step4.desc": { nl: "Stel je eerste outreach campagne op", en: "Set up your first outreach campaign" },
+  "onboarding.goTo": { nl: "Ga naar", en: "Go to" },
+  "onboarding.completed": { nl: "Voltooid", en: "Completed" },
+  "onboarding.loading": { nl: "Stappen laden...", en: "Loading steps..." },
 
   // ── Dashboard / Overview ────────────────────
   "overview.title": { nl: "Welkom bij PROLEAD", en: "Welcome to PROLEAD" },
@@ -577,6 +595,40 @@ const translations: Record<string, Record<string, string>> = {
   "importLeads.importLeads": { nl: "leads importeren", en: "leads import" },
   "importLeads.goToLeads": { nl: "Naar leads", en: "Go to leads" },
   "importLeads.rowsSkipped": { nl: "rij(en) overgeslagen (ontbrekende verplichte velden)", en: "row(s) skipped (missing required fields)" },
+
+  // ── Direct CSV Paste (Lead Prompter) ──────
+  "prompter.directImport": { nl: "Direct importeren", en: "Direct import" },
+  "prompter.directImportDesc": { nl: "Plak de CSV output van Claude hier en importeer leads direct.", en: "Paste the CSV output from Claude here and import leads directly." },
+  "prompter.pasteCSV": { nl: "Plak hier je CSV output van Claude...", en: "Paste your CSV output from Claude here..." },
+  "prompter.parseImport": { nl: "Parse & Importeer", en: "Parse & Import" },
+  "prompter.previewTitle": { nl: "Preview (eerste 5 rijen)", en: "Preview (first 5 rows)" },
+  "prompter.valid": { nl: "Geldig", en: "Valid" },
+  "prompter.invalid": { nl: "Ongeldig", en: "Invalid" },
+  "prompter.importLeads": { nl: "leads importeren", en: "leads import" },
+  "prompter.importing": { nl: "Importeren...", en: "Importing..." },
+  "prompter.importSuccess": { nl: "leads succesvol geimporteerd!", en: "leads successfully imported!" },
+  "prompter.goToLeads": { nl: "Bekijk leads", en: "View leads" },
+  "prompter.importError": { nl: "Fout bij importeren", en: "Error importing" },
+  "prompter.noValidLeads": { nl: "Geen geldige leads gevonden in de CSV.", en: "No valid leads found in the CSV." },
+  "prompter.rowFailed": { nl: "Rij mislukt", en: "Row failed" },
+  "prompter.missingFields": { nl: "Ontbrekende velden", en: "Missing fields" },
+
+  // ── Notifications ─────────────────────────
+  "notifications.title": { nl: "Meldingen", en: "Notifications" },
+  "notifications.empty": { nl: "Geen meldingen", en: "No notifications" },
+  "notifications.markAllRead": { nl: "Alles gelezen", en: "Mark all read" },
+
+  // ── Campaign Preview ──────────────────────
+  "campaigns.previewTitle": { nl: "Campagne Voorbeeld", en: "Campaign Preview" },
+  "campaigns.previewDesc": { nl: "Bekijk de eerste leads die benaderd zullen worden.", en: "Review the first leads that will be contacted." },
+  "campaigns.previewNote": { nl: "AI genereert een gepersonaliseerde email voor elke lead.", en: "AI will generate a personalized email for each lead." },
+  "campaigns.activateCampaign": { nl: "Campagne activeren", en: "Activate Campaign" },
+  "campaigns.previewName": { nl: "Naam", en: "Name" },
+  "campaigns.previewCompany": { nl: "Bedrijf", en: "Company" },
+  "campaigns.previewIcpScore": { nl: "ICP Score", en: "ICP Score" },
+  "campaigns.previewNoLeads": { nl: "Geen leads gevonden voor deze campagne.", en: "No leads found for this campaign." },
+  "campaigns.previewLoading": { nl: "Leads laden...", en: "Loading leads..." },
+  "campaigns.activating": { nl: "Activeren...", en: "Activating..." },
 };
 
 let currentLanguage = "nl";

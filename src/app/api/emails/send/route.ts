@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email/sender";
 import { injectTracking } from "@/lib/email/tracking";
 import { shouldSendWarmup } from "@/lib/email/warmup";
+import { wrapEmailInTemplate } from "@/lib/email/templates";
 
 // POST /api/emails/send — Send a single email to a lead
 export async function POST(request: NextRequest) {
@@ -122,8 +123,24 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // ── Wrap in branded template ────────────────────────────
+  let companyProfile = null;
+  const { data: userData } = await supabase
+    .from("users").select("org_id").eq("id", user.id).single();
+  if (userData) {
+    const { data: org } = await supabase
+      .from("organizations").select("company_profile").eq("id", userData.org_id).single();
+    companyProfile = org?.company_profile || null;
+  }
+
+  const wrappedHtml = wrapEmailInTemplate({
+    bodyHtml: body_html,
+    companyProfile,
+    stepNumber: step_id ? 2 : 1, // If part of a sequence step, use branded
+  });
+
   // ── Inject tracking into HTML body ──────────────────────
-  const trackedHtml = injectTracking(body_html, emailRecord.id);
+  const trackedHtml = injectTracking(wrappedHtml, emailRecord.id);
 
   // ── Send via Resend ─────────────────────────────────────
   const fromAddress = account.display_name

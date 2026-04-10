@@ -20,6 +20,7 @@ import {
   LogOut,
   ChevronLeft,
   Menu,
+  Rocket,
 } from "lucide-react";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -33,6 +34,7 @@ import {
 import { useTranslation } from "@/components/language-provider";
 
 const navItems = [
+  { href: "/onboarding", labelKey: "nav.onboarding", icon: Rocket },
   { href: "/overview", labelKey: "nav.overview", icon: LayoutDashboard },
   { href: "/bedrijf", labelKey: "nav.company", icon: Building2 },
   { href: "/leadprompter", labelKey: "nav.leadprompter", icon: Sparkles },

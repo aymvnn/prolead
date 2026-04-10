@@ -56,7 +56,7 @@ export default function SignupPage() {
 
         // If user is returned with a session, auto-confirm is on — redirect
         if (data.session) {
-          window.location.href = "/leads";
+          window.location.href = "/onboarding";
           return;
         }
 
