@@ -34,7 +34,7 @@ import {
 import { useTranslation } from "@/components/language-provider";
 
 export default function BedrijfsprofielPage() {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
