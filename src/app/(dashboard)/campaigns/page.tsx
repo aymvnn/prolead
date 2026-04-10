@@ -28,6 +28,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Plus,
   Search,
   MoreHorizontal,
@@ -36,8 +44,10 @@ import {
   Trash2,
   Megaphone,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { useTranslation } from "@/components/language-provider";
+import { createClient } from "@/lib/supabase/client";
 
 type CampaignStatus = "draft" | "active" | "paused" | "completed" | "archived";
 
@@ -53,6 +63,13 @@ interface Campaign {
   created_at: string;
   icp_profiles: { name: string } | null;
   voice_profiles: { name: string } | null;
+}
+
+interface PreviewLead {
+  first_name: string | null;
+  last_name: string | null;
+  company: string | null;
+  icp_score: number | null;
 }
 
 const statusColors: Record<CampaignStatus, string> = {
@@ -84,6 +101,13 @@ export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Preview dialog state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewCampaignId, setPreviewCampaignId] = useState<string | null>(null);
+  const [previewLeads, setPreviewLeads] = useState<PreviewLead[]>([]);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [activating, setActivating] = useState(false);
+
   const fetchCampaigns = useCallback(async () => {
     setLoading(true);
     try {
@@ -107,13 +131,65 @@ export default function CampaignsPage() {
     fetchCampaigns();
   }, [fetchCampaigns]);
 
+  const handleShowPreview = async (campaignId: string) => {
+    setPreviewCampaignId(campaignId);
+    setPreviewOpen(true);
+    setLoadingPreview(true);
+    setPreviewLeads([]);
+
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("campaign_leads")
+        .select("leads(first_name, last_name, company, icp_score)")
+        .eq("campaign_id", campaignId)
+        .order("leads(icp_score)", { ascending: false })
+        .limit(3);
+
+      if (data) {
+        const leads: PreviewLead[] = data
+          .map((row: Record<string, unknown>) => row.leads as PreviewLead | null)
+          .filter(Boolean) as PreviewLead[];
+        setPreviewLeads(leads);
+      }
+    } catch {
+      // If join fails, try a simpler approach
+      try {
+        const supabase = createClient();
+        const { data: clData } = await supabase
+          .from("campaign_leads")
+          .select("lead_id")
+          .eq("campaign_id", campaignId)
+          .limit(3);
+
+        if (clData && clData.length > 0) {
+          const leadIds = clData.map((cl: { lead_id: string }) => cl.lead_id);
+          const { data: leadsData } = await supabase
+            .from("leads")
+            .select("first_name, last_name, company, icp_score")
+            .in("id", leadIds)
+            .order("icp_score", { ascending: false });
+
+          if (leadsData) setPreviewLeads(leadsData);
+        }
+      } catch {
+        // Silently fail
+      }
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
   const handleActivate = async (campaignId: string) => {
+    setActivating(true);
     try {
       const res = await fetch(`/api/campaigns/${campaignId}/activate`, {
         method: "POST",
       });
       const json = await res.json();
       if (res.ok) {
+        setPreviewOpen(false);
+        setPreviewCampaignId(null);
         alert(
           `Campaign geactiveerd! ${json.leads_activated} leads gestart, ${json.sequence_events_triggered} sequence events getriggerd.`,
         );
@@ -123,6 +199,8 @@ export default function CampaignsPage() {
       }
     } catch {
       alert("Activatie mislukt door een netwerkfout.");
+    } finally {
+      setActivating(false);
     }
   };
 
@@ -352,7 +430,7 @@ export default function CampaignsPage() {
                           <DropdownMenuItem
                             onClick={() =>
                               campaign.status === "draft"
-                                ? handleActivate(campaign.id)
+                                ? handleShowPreview(campaign.id)
                                 : handleStatusChange(campaign.id, "active")
                             }
                           >
@@ -388,6 +466,122 @@ export default function CampaignsPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Activation Preview Dialog */}
+      <Dialog
+        open={previewOpen}
+        onOpenChange={(open) => {
+          setPreviewOpen(open);
+          if (!open) setPreviewCampaignId(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("campaigns.previewTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("campaigns.previewDesc")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            {loadingPreview ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
+                <span className="ml-2 text-sm text-neutral-500">
+                  {t("campaigns.previewLoading")}
+                </span>
+              </div>
+            ) : previewLeads.length === 0 ? (
+              <p className="py-4 text-center text-sm text-neutral-500">
+                {t("campaigns.previewNoLeads")}
+              </p>
+            ) : (
+              <>
+                <div className="rounded-lg border border-border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("campaigns.previewName")}</TableHead>
+                        <TableHead>{t("campaigns.previewCompany")}</TableHead>
+                        <TableHead className="text-right">
+                          {t("campaigns.previewIcpScore")}
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {previewLeads.map((lead, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="font-medium">
+                            {[lead.first_name, lead.last_name]
+                              .filter(Boolean)
+                              .join(" ") || "-"}
+                          </TableCell>
+                          <TableCell>{lead.company || "-"}</TableCell>
+                          <TableCell className="text-right">
+                            {lead.icp_score != null ? (
+                              <Badge
+                                variant="secondary"
+                                className={
+                                  lead.icp_score >= 80
+                                    ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                                    : lead.icp_score >= 50
+                                      ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+                                      : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
+                                }
+                              >
+                                {lead.icp_score}
+                              </Badge>
+                            ) : (
+                              "-"
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="flex items-start gap-2 rounded-lg bg-primary/5 p-3">
+                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                    {t("campaigns.previewNote")}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPreviewOpen(false);
+                setPreviewCampaignId(null);
+              }}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              disabled={activating || loadingPreview}
+              onClick={() => {
+                if (previewCampaignId) handleActivate(previewCampaignId);
+              }}
+            >
+              {activating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t("campaigns.activating")}
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-4 w-4" />
+                  {t("campaigns.activateCampaign")}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
