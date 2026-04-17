@@ -59,6 +59,10 @@ export default function ICPPage() {
   const [saving, setSaving] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newProfileName, setNewProfileName] = useState("");
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<
+    { kind: "ok" | "error"; text: string } | null
+  >(null);
 
   // Form state
   const [industries, setIndustries] = useState<string[]>([]);
@@ -79,8 +83,25 @@ export default function ICPPage() {
   const supabase = createClient();
 
   useEffect(() => {
-    loadProfiles();
+    void init();
   }, []);
+
+  async function init() {
+    // Resolve the current user's org_id once — needed for every write
+    // (icp_profiles.org_id is NOT NULL and RLS-scoped).
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { data: userRow } = await supabase
+        .from("users")
+        .select("org_id")
+        .eq("id", user.id)
+        .single();
+      if (userRow?.org_id) setOrgId(userRow.org_id);
+    }
+    await loadProfiles();
+  }
 
   async function loadProfiles() {
     setLoading(true);
@@ -158,11 +179,21 @@ export default function ICPPage() {
 
   async function handleSave() {
     setSaving(true);
+    setSaveMessage(null);
     const criteria = buildCriteria();
     const desc = buildDescription();
 
+    if (!orgId) {
+      setSaveMessage({
+        kind: "error",
+        text: "Geen organisatie gevonden. Log opnieuw in.",
+      });
+      setSaving(false);
+      return;
+    }
+
     if (activeProfile) {
-      // Update existing
+      // Update existing profile.
       const { error } = await supabase
         .from("icp_profiles")
         .update({
@@ -171,7 +202,42 @@ export default function ICPPage() {
         })
         .eq("id", activeProfile.id);
 
-      if (!error) {
+      if (error) {
+        setSaveMessage({ kind: "error", text: error.message });
+      } else {
+        setSaveMessage({ kind: "ok", text: "ICP profiel opgeslagen." });
+        await loadProfiles();
+      }
+    } else {
+      // No profile yet — auto-create a default one so the Save button is
+      // never a no-op for first-time users.
+      const defaultName = "Mijn ICP";
+      const { data, error } = await supabase
+        .from("icp_profiles")
+        .insert({
+          org_id: orgId,
+          name: defaultName,
+          criteria,
+          description: desc,
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (error || !data) {
+        setSaveMessage({
+          kind: "error",
+          text: error?.message ?? "Kon ICP profiel niet aanmaken.",
+        });
+      } else {
+        // Deactivate any other active profiles for this org now that the
+        // new one is safely persisted.
+        await supabase
+          .from("icp_profiles")
+          .update({ is_active: false })
+          .eq("org_id", orgId)
+          .neq("id", data.id);
+        setSaveMessage({ kind: "ok", text: "ICP profiel aangemaakt." });
         await loadProfiles();
       }
     }
@@ -181,19 +247,25 @@ export default function ICPPage() {
   async function handleCreateProfile() {
     if (!newProfileName.trim()) return;
     setSaving(true);
+    setSaveMessage(null);
+
+    if (!orgId) {
+      setSaveMessage({
+        kind: "error",
+        text: "Geen organisatie gevonden. Log opnieuw in.",
+      });
+      setSaving(false);
+      return;
+    }
 
     const criteria = buildCriteria();
     const desc = buildDescription();
 
-    // Deactivate other profiles
-    await supabase
-      .from("icp_profiles")
-      .update({ is_active: false })
-      .neq("id", "00000000-0000-0000-0000-000000000000");
-
+    // Insert FIRST — if this fails we don't want to have deactivated anything.
     const { data, error } = await supabase
       .from("icp_profiles")
       .insert({
+        org_id: orgId,
         name: newProfileName.trim(),
         criteria,
         description: desc,
@@ -202,18 +274,37 @@ export default function ICPPage() {
       .select()
       .single();
 
-    if (!error && data) {
-      setShowNewDialog(false);
-      setNewProfileName("");
-      await loadProfiles();
+    if (error || !data) {
+      setSaveMessage({
+        kind: "error",
+        text: error?.message ?? "Kon ICP profiel niet aanmaken.",
+      });
+      setSaving(false);
+      return;
     }
+
+    // Only deactivate other profiles after successful insert.
+    await supabase
+      .from("icp_profiles")
+      .update({ is_active: false })
+      .eq("org_id", orgId)
+      .neq("id", data.id);
+
+    setShowNewDialog(false);
+    setNewProfileName("");
+    setSaveMessage({ kind: "ok", text: "Nieuw ICP profiel aangemaakt." });
+    await loadProfiles();
     setSaving(false);
   }
 
   async function handleSetActive(profileId: string) {
+    if (!orgId) return;
+    // Scope updates to the user's org — RLS enforces this too, but being
+    // explicit means we don't accidentally try to update foreign rows.
     await supabase
       .from("icp_profiles")
       .update({ is_active: false })
+      .eq("org_id", orgId)
       .neq("id", profileId);
 
     await supabase
@@ -319,12 +410,26 @@ export default function ICPPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          <Button onClick={handleSave} disabled={saving || !activeProfile}>
+          <Button onClick={handleSave} disabled={saving}>
             <Save className="mr-2 h-4 w-4" />
             {saving ? t("common.loading") : t("common.save")}
           </Button>
         </div>
       </div>
+
+      {/* Save feedback: shows both success and errors inline so nothing is silently swallowed. */}
+      {saveMessage && (
+        <div
+          className={
+            "rounded-lg border p-3 text-sm " +
+            (saveMessage.kind === "ok"
+              ? "border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950/20 dark:text-green-300"
+              : "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300")
+          }
+        >
+          {saveMessage.text}
+        </div>
+      )}
 
       {/* Profile Selector */}
       {profiles.length > 0 && (
