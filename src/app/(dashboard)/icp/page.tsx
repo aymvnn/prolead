@@ -115,6 +115,10 @@ export default function ICPPage() {
     else if (c.locations?.includes("Nederland")) setRegion("nl");
     else if (c.locations?.includes("DACH")) setRegion("dach");
     else if (c.locations?.includes("Europa")) setRegion("europe");
+    else if (c.locations?.includes("Africa")) setRegion("africa");
+    else if (c.locations?.includes("USA")) setRegion("usa");
+    else if (c.locations?.includes("Middle East")) setRegion("middle_east");
+    else if (c.locations?.includes("GCC")) setRegion("gcc");
     else if (c.locations?.includes("Wereldwijd")) setRegion("global");
   }
 
@@ -124,6 +128,10 @@ export default function ICPPage() {
       benelux: "Benelux",
       dach: "DACH",
       europe: "Europa",
+      africa: "Africa",
+      usa: "USA",
+      middle_east: "Middle East",
+      gcc: "GCC",
       global: "Wereldwijd",
     };
 
@@ -553,6 +561,10 @@ export default function ICPPage() {
                   <SelectItem value="benelux">{t("icp.regionBenelux")}</SelectItem>
                   <SelectItem value="dach">{t("icp.regionDach")}</SelectItem>
                   <SelectItem value="europe">{t("icp.regionEurope")}</SelectItem>
+                  <SelectItem value="africa">{t("icp.regionAfrica")}</SelectItem>
+                  <SelectItem value="usa">{t("icp.regionUsa")}</SelectItem>
+                  <SelectItem value="middle_east">{t("icp.regionMiddleEast")}</SelectItem>
+                  <SelectItem value="gcc">{t("icp.regionGcc")}</SelectItem>
                   <SelectItem value="global">{t("icp.regionGlobal")}</SelectItem>
                 </SelectContent>
               </Select>
