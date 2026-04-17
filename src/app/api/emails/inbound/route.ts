@@ -166,26 +166,63 @@ export async function POST(request: NextRequest) {
       .eq("lead_id", lead.id)
       .eq("status", "active");
 
-    // 9. If meeting, create a meeting record
+    // 9. If meeting, create a meeting record only if we have a concrete
+    //    proposed start time. Otherwise the conversation is flagged
+    //    meeting_booked=true and a human confirms via /meetings.
     if (result.action === "schedule" && result.meetingProposal) {
-      await supabase.from("meetings").insert({
-        org_id: lead.org_id,
-        lead_id: lead.id,
-        conversation_id: conversation.id,
-        title: result.meetingProposal.meeting_title,
-        start_time: new Date().toISOString(), // Placeholder until confirmed
-        end_time: new Date().toISOString(),
-        timezone: "Europe/Amsterdam",
-        status: "scheduled",
-      });
+      const firstSuggested = result.meetingProposal.suggested_times?.[0];
+      if (firstSuggested?.date && firstSuggested?.start_time) {
+        // Scheduler returns {date: "YYYY-MM-DD", start_time: "HH:mm", ...}.
+        // Combine into an ISO timestamp in the given timezone (we treat
+        // the timezone as a label — Postgres stores this as a TIMESTAMPTZ).
+        const startIso = `${firstSuggested.date}T${firstSuggested.start_time}:00`;
+        const endIso =
+          firstSuggested.end_time && firstSuggested.date
+            ? `${firstSuggested.date}T${firstSuggested.end_time}:00`
+            : null;
+        const start = new Date(startIso);
+        if (!Number.isNaN(start.getTime())) {
+          const end = endIso ? new Date(endIso) : null;
+          const endFinal =
+            end && !Number.isNaN(end.getTime())
+              ? end
+              : new Date(start.getTime() + 30 * 60 * 1000);
+          await supabase.from("meetings").insert({
+            org_id: lead.org_id,
+            lead_id: lead.id,
+            conversation_id: conversation.id,
+            title: result.meetingProposal.meeting_title,
+            start_time: start.toISOString(),
+            end_time: endFinal.toISOString(),
+            timezone: firstSuggested.timezone || "Europe/Amsterdam",
+            status: "scheduled",
+          });
+        }
+      }
+      // If we don't have a concrete time we skip the meetings insert; the
+      // conversation.meeting_booked flag + ai_summary give the human
+      // operator enough context to propose an exact slot manually.
     }
 
-    // 10. Store an email record for the inbound message
+    // 10. Store an email record for the inbound message.
+    //     email_account_id is nullable (migration 004) because inbound
+    //     replies don't originate from our own sending accounts.
+    //     Try to inherit the account that originally sent to this lead so
+    //     we can still join the thread if one is available.
+    const { data: originalOutbound } = await supabase
+      .from("emails")
+      .select("email_account_id")
+      .eq("lead_id", lead.id)
+      .eq("direction", "outbound")
+      .order("sent_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     await supabase.from("emails").insert({
       org_id: lead.org_id,
       lead_id: lead.id,
       campaign_id: conversation.campaign_id,
-      email_account_id: "00000000-0000-0000-0000-000000000000", // Placeholder
+      email_account_id: originalOutbound?.email_account_id ?? null,
       from_email: fromEmail,
       to_email: "inbound@prolead.app",
       subject: subject || "(geen onderwerp)",

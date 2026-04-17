@@ -97,15 +97,47 @@ export default function ImportLeadsPage() {
       ]);
     }
 
-    // Import in batches of 50
+    // Resolve the user's org_id (required column on leads).
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setErrors((prev) => [...prev, "Niet ingelogd"]);
+      setImporting(false);
+      return;
+    }
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("org_id")
+      .eq("id", user.id)
+      .single();
+    const orgId = userRow?.org_id;
+    if (!orgId) {
+      setErrors((prev) => [
+        ...prev,
+        "Geen organisatie gevonden voor deze gebruiker",
+      ]);
+      setImporting(false);
+      return;
+    }
+
+    // Import in batches of 50. Upsert on (org_id, email) so duplicates don't
+    // crash the whole batch.
     const batchSize = 50;
     for (let i = 0; i < validRows.length; i += batchSize) {
       const batch = validRows.slice(i, i + batchSize).map((row) => ({
         ...row,
+        email: row.email.trim().toLowerCase(),
+        org_id: orgId,
         status: "new" as const,
       }));
 
-      const { error } = await supabase.from("leads").insert(batch);
+      const { error } = await supabase
+        .from("leads")
+        .upsert(batch, {
+          onConflict: "org_id,email",
+          ignoreDuplicates: true,
+        });
 
       if (error) {
         setErrors((prev) => [...prev, `Batch ${Math.floor(i / batchSize) + 1}: ${error.message}`]);

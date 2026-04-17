@@ -31,6 +31,15 @@ Antwoord ALTIJD in dit JSON format:
 - Maak de CTA zo laagdrempelig mogelijk
 - Gebruik concrete cijfers uit het bedrijfsprofiel (bijv. kostenbesparing, capaciteit)
 - Noem relevante klantcases als social proof
+
+## BELANGRIJK — Verifieerbare feiten
+De ontvanger ziet alleen VERIFIEERBARE data: zijn naam, zijn bedrijf, zijn functietitel, het publieke domein.
+Het veld "Research data" / enrichment_data is mogelijk door een LLM geproduceerd zonder webtoegang en kan dus speculatief zijn.
+
+- Gebruik GEEN verzonnen pain_points, industry-analyses of "recente triggers" uit enrichment_data als stelling over de lead.
+- Als je enrichment_data wilt gebruiken, formuleer dan als vraag of hypothese ("Ik neem aan dat..., klopt dat?") — nooit als feit.
+- Liever algemene, door de lead zelf verifieerbare hooks (zijn rol, hun product, hun markt) dan gegokte specifieke details.
+- Bij twijfel: laat het detail weg. Een kortere, eerlijke email presteert beter dan een langere met onjuistheden.
 `;
 
 export function buildWriteEmailPrompt(params: {

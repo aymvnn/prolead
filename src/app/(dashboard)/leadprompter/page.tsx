@@ -275,10 +275,38 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
     setImportResult(null);
 
     try {
+      // Resolve org_id (required column, RLS-enforced).
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setImportResult({
+          success: false,
+          count: 0,
+          errors: ["Niet ingelogd"],
+        });
+        return;
+      }
+      const { data: userRow } = await supabase
+        .from("users")
+        .select("org_id")
+        .eq("id", user.id)
+        .single();
+      const orgId = userRow?.org_id;
+      if (!orgId) {
+        setImportResult({
+          success: false,
+          count: 0,
+          errors: ["Geen organisatie gevonden voor deze gebruiker"],
+        });
+        return;
+      }
+
       const rows = validLeads.map((l) => ({
+        org_id: orgId,
         first_name: l.data.first_name,
         last_name: l.data.last_name,
-        email: l.data.email,
+        email: l.data.email.trim().toLowerCase(),
         company: l.data.company,
         title: l.data.title || null,
         linkedin_url: l.data.linkedin_url || null,
@@ -289,7 +317,12 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
         status: "new" as const,
       }));
 
-      const { error } = await supabase.from("leads").insert(rows);
+      const { error } = await supabase
+        .from("leads")
+        .upsert(rows, {
+          onConflict: "org_id,email",
+          ignoreDuplicates: true,
+        });
 
       if (error) {
         setImportResult({
@@ -337,6 +370,17 @@ Zoek nu ${leadCount} leads die aan bovenstaande criteria voldoen. Begin met de w
         <p className="text-sm text-neutral-500">
           {t("prompter.desc")}
         </p>
+      </div>
+
+      {/* Kwaliteits-waarschuwing: leads zijn zelf of Claude-chat gegenereerd */}
+      <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/20">
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+        <div className="space-y-1 text-amber-900 dark:text-amber-200">
+          <p className="font-medium">Controleer leads steekproefsgewijs</p>
+          <p>
+            Deze leads worden door jouzelf of door Claude (in een externe chat) gegenereerd. PROLEAD verifieert email-adressen pré-send via MX-lookup, maar kan geen garantie geven op juistheid van LinkedIn-profielen, functietitels of bedrijfsdata. Doe voor de warmste 10-20 leads een handmatige sanity-check vóór je de campagne activeert.
+          </p>
+        </div>
       </div>
 
       {/* How it works */}

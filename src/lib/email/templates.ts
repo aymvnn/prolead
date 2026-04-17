@@ -5,6 +5,10 @@ import type { CompanyProfile } from "@/types/database";
  *
  * For cold outreach (step 1), returns plain-style HTML (no heavy branding).
  * For follow-ups (step 2+), wraps in branded template with logo and footer.
+ *
+ * The returned HTML contains a `{{UNSUBSCRIBE_URL}}` placeholder that the
+ * caller MUST replace with a per-recipient unsubscribe URL before sending.
+ * Use `injectUnsubscribeUrl()` for both HTML and text bodies.
  */
 export function wrapEmailInTemplate(params: {
   bodyHtml: string;
@@ -23,6 +27,23 @@ export function wrapEmailInTemplate(params: {
   return brandedTemplate(bodyHtml, companyProfile);
 }
 
+/**
+ * Replace {{UNSUBSCRIBE_URL}} tokens in HTML and append a plain-text
+ * unsubscribe footer so both MIME parts have an opt-out path.
+ */
+export function injectUnsubscribeUrl(
+  htmlBody: string,
+  textBody: string,
+  unsubscribeUrl: string,
+): { htmlBody: string; textBody: string } {
+  const html = htmlBody.split("{{UNSUBSCRIBE_URL}}").join(unsubscribeUrl);
+  const textFooter = `\n\n---\nUnsubscribe / Uitschrijven: ${unsubscribeUrl}`;
+  const text = textBody.includes("Unsubscribe")
+    ? textBody
+    : (textBody || "") + textFooter;
+  return { htmlBody: html, textBody: text };
+}
+
 function plainTemplate(
   bodyHtml: string,
   profile?: CompanyProfile | null,
@@ -39,6 +60,7 @@ function plainTemplate(
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; }
   .container { max-width: 600px; margin: 0 auto; padding: 24px; }
   .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e5e5; font-size: 12px; color: #888; }
+  .unsub { margin-top: 8px; font-size: 11px; color: #94a3b8; }
   a { color: #4f46e5; }
 </style>
 </head>
@@ -47,6 +69,7 @@ function plainTemplate(
 ${bodyHtml}
 <div class="footer">
 ${companyName}${website ? ` · <a href="https://${website.replace(/^https?:\/\//, "")}">${website.replace(/^https?:\/\//, "")}</a>` : ""}
+<div class="unsub"><a href="{{UNSUBSCRIBE_URL}}">Unsubscribe / Uitschrijven</a></div>
 </div>
 </div>
 </body>
@@ -101,8 +124,8 @@ ${description ? `<br>${description.slice(0, 100)}` : ""}
 ${website ? `<br><a href="https://${website.replace(/^https?:\/\//, "")}">${website.replace(/^https?:\/\//, "")}</a>` : ""}
 <div class="divider"></div>
 <span style="font-size: 11px; color: #9ca3af;">
-You received this email because we think our services could be valuable to you.
-<br>If you prefer not to receive these emails, simply reply with "unsubscribe".
+You received this email because we believe our services could be valuable to you.
+<br><a href="{{UNSUBSCRIBE_URL}}">Unsubscribe</a> &nbsp;·&nbsp; <a href="{{UNSUBSCRIBE_URL}}">Uitschrijven</a> (1-click)
 </span>
 </div>
 </div>

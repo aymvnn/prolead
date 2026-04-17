@@ -31,36 +31,56 @@ export default function OnboardingPage() {
         } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Check company profile
-        const { data: profile } = await supabase
-          .from("company_profiles")
-          .select("id")
-          .eq("user_id", user.id)
-          .limit(1);
+        // Resolve the user's organization
+        const { data: userRow } = await supabase
+          .from("users")
+          .select("org_id")
+          .eq("id", user.id)
+          .single();
 
-        // Check ICP profiles
-        const { count: icpCount } = await supabase
-          .from("icp_profiles")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id);
+        const orgId = userRow?.org_id;
+        if (!orgId) {
+          setStatus({
+            companyDone: false,
+            icpDone: false,
+            leadsDone: false,
+            campaignsDone: false,
+          });
+          return;
+        }
 
-        // Check leads
-        const { count: leadsCount } = await supabase
-          .from("leads")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id);
+        // Check company profile (lives on organizations.company_profile JSONB)
+        const { data: org } = await supabase
+          .from("organizations")
+          .select("company_profile")
+          .eq("id", orgId)
+          .single();
+        const companyProfile = (org?.company_profile ?? {}) as Record<string, unknown>;
+        const companyDone = Object.values(companyProfile).some(
+          (v) => typeof v === "string" && v.trim().length > 0,
+        );
 
-        // Check campaigns
-        const { count: campaignsCount } = await supabase
-          .from("campaigns")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id);
+        // Check ICP profiles / leads / campaigns (all scoped by org_id)
+        const [icpRes, leadsRes, campaignsRes] = await Promise.all([
+          supabase
+            .from("icp_profiles")
+            .select("id", { count: "exact", head: true })
+            .eq("org_id", orgId),
+          supabase
+            .from("leads")
+            .select("id", { count: "exact", head: true })
+            .eq("org_id", orgId),
+          supabase
+            .from("campaigns")
+            .select("id", { count: "exact", head: true })
+            .eq("org_id", orgId),
+        ]);
 
         setStatus({
-          companyDone: (profile?.length ?? 0) > 0,
-          icpDone: (icpCount ?? 0) > 0,
-          leadsDone: (leadsCount ?? 0) > 0,
-          campaignsDone: (campaignsCount ?? 0) > 0,
+          companyDone,
+          icpDone: (icpRes.count ?? 0) > 0,
+          leadsDone: (leadsRes.count ?? 0) > 0,
+          campaignsDone: (campaignsRes.count ?? 0) > 0,
         });
       } catch {
         setStatus({

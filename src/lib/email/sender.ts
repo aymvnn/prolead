@@ -8,6 +8,12 @@ export interface SendEmailOptions {
   htmlBody: string;
   textBody: string;
   fromEmail: string;
+  /**
+   * Extra SMTP headers to attach to the outbound message. Used for
+   * List-Unsubscribe / List-Unsubscribe-Post (RFC 8058) and any custom
+   * tracking headers.
+   */
+  headers?: Record<string, string>;
 }
 
 export interface SendEmailResult {
@@ -35,7 +41,7 @@ export async function checkDailyLimit(
 export async function sendEmail(
   options: SendEmailOptions,
 ): Promise<SendEmailResult> {
-  const { to, subject, htmlBody, textBody, fromEmail } = options;
+  const { to, subject, htmlBody, textBody, fromEmail, headers } = options;
 
   try {
     const { data, error } = await resend.emails.send({
@@ -44,6 +50,7 @@ export async function sendEmail(
       subject,
       html: htmlBody,
       text: textBody,
+      ...(headers ? { headers } : {}),
     });
 
     if (error) {

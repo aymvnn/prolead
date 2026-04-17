@@ -171,10 +171,31 @@ export async function POST(
         await inngest.send(events);
         eventsTriggered += events.length;
       }
-    } catch {
-      // Inngest not configured yet — campaign is still activated
-      console.warn(
-        "Inngest not available. Campaign activated but sequence steps not auto-triggered.",
+    } catch (err) {
+      // Inngest unreachable — roll the campaign back to draft so the user
+      // doesn't think "active" means "sending". Previously this was silently
+      // swallowed, which caused campaigns to appear active while nothing was
+      // actually scheduled.
+      await supabase
+        .from("campaigns")
+        .update({ status: "draft" })
+        .eq("id", id);
+
+      await supabase
+        .from("campaign_leads")
+        .update({ status: "pending" })
+        .eq("campaign_id", id)
+        .eq("status", "active");
+
+      const message =
+        err instanceof Error ? err.message : "Unknown Inngest error";
+      return NextResponse.json(
+        {
+          error:
+            "Kon sequence-events niet schedulen via Inngest. Campaign is teruggezet naar 'draft'.",
+          details: message,
+        },
+        { status: 500 },
       );
     }
   }

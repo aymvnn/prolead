@@ -33,6 +33,7 @@ import {
   ExternalLink,
   Settings2,
   RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 import { useTranslation } from "@/components/language-provider";
 
@@ -267,6 +268,17 @@ export default function IntegrationsPage() {
         </p>
       </div>
 
+      {/* Warning: deze tegels slaan credentials op maar worden nog niet live gebruikt */}
+      <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/20">
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+        <div className="space-y-1 text-amber-900 dark:text-amber-200">
+          <p className="font-medium">Deze integraties zijn nog niet actief in PROLEAD</p>
+          <p>
+            De instellingen hieronder slaan credentials veilig op, maar worden op dit moment nog niet gebruikt door de verzend- of sync-logica. De enige werkende email-route is Resend via de <code className="rounded bg-amber-100 px-1 py-0.5 text-xs dark:bg-amber-900">RESEND_API_KEY</code> environment variable. LinkedIn/HeyReach, Google Calendar en SMTP komen in een latere fase.
+          </p>
+        </div>
+      </div>
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
@@ -320,7 +332,15 @@ export default function IntegrationsPage() {
                       <Icon className="h-5 w-5" />
                     </div>
                     <div>
-                      <CardTitle className="text-sm">{config.name}</CardTitle>
+                      <CardTitle className="flex items-center gap-2 text-sm">
+                        {config.name}
+                        <Badge
+                          variant="secondary"
+                          className="bg-amber-100 text-[10px] text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                        >
+                          Coming soon
+                        </Badge>
+                      </CardTitle>
                       <div className="mt-0.5 flex items-center gap-1.5">
                         <Badge variant="secondary" className={status.color}>
                           <StatusIcon className="mr-1 h-3 w-3" />

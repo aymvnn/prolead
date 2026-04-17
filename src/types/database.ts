@@ -38,6 +38,8 @@ export type ABTestStatus = "running" | "completed" | "paused";
 export type ConversationStatus = "active" | "paused" | "closed" | "escalated";
 export type TriggerEventType = "job_change" | "funding" | "new_hire" | "company_news" | "technology_change" | "expansion";
 
+export type SuppressionReason = "unsubscribed" | "bounced_hard" | "complained" | "invalid" | "manual";
+
 // ── Table Types ────────────────────────────
 
 export interface CompanyProfile {
@@ -216,7 +218,8 @@ export interface Email {
   campaign_id: string | null;
   sequence_id: string | null;
   step_id: string | null;
-  email_account_id: string;
+  /** Nullable since migration 004 — inbound replies don't have a sending account. */
+  email_account_id: string | null;
   from_email: string;
   to_email: string;
   subject: string;
@@ -225,11 +228,24 @@ export interface Email {
   status: EmailStatus;
   direction: EmailDirection;
   thread_id: string | null;
+  /** Resend email id persisted at send time (migration 004). */
+  provider_message_id: string | null;
+  /** HMAC-signed one-click unsubscribe token (migration 004). */
+  unsubscribe_token: string | null;
   opened_at: string | null;
   clicked_at: string | null;
   replied_at: string | null;
   bounced_at: string | null;
   sent_at: string | null;
+  created_at: string;
+}
+
+export interface EmailSuppression {
+  id: string;
+  org_id: string;
+  email: string;
+  reason: SuppressionReason;
+  source: string | null;
   created_at: string;
 }
 

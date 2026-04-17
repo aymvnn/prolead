@@ -2,6 +2,17 @@ import { inngest } from "../client";
 import { createClient } from "@supabase/supabase-js";
 import { generateEmail } from "@/lib/ai/agents/writer";
 import { sendEmail } from "@/lib/email/sender";
+import {
+  injectUnsubscribeUrl,
+  wrapEmailInTemplate,
+} from "@/lib/email/templates";
+import { isSuppressed, addSuppression } from "@/lib/email/suppression";
+import { verifyEmail } from "@/lib/email/verify";
+import {
+  buildListUnsubscribeHeaders,
+  buildUnsubscribeToken,
+  buildUnsubscribeUrl,
+} from "@/lib/email/unsubscribe";
 
 function createServiceClient() {
   return createClient(
@@ -10,13 +21,112 @@ function createServiceClient() {
   );
 }
 
+function getAppUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.VERCEL_URL ||
+    "http://localhost:3000"
+  ).replace(/\/$/, "");
+}
+
+interface CampaignSettings {
+  daily_limit?: number;
+  timezone?: string;
+  send_window_start?: string; // "09:00"
+  send_window_end?: string; // "17:00"
+  skip_weekends?: boolean;
+}
+
+/**
+ * Compute the next timestamp when we are allowed to send, given a send window
+ * and timezone. Returns null if we're already inside the window.
+ */
+function nextAllowedSendAt(
+  now: Date,
+  settings: CampaignSettings,
+): number | null {
+  const tz = settings.timezone || "Europe/Amsterdam";
+  const startStr = settings.send_window_start || "09:00";
+  const endStr = settings.send_window_end || "17:00";
+  const skipWeekends = settings.skip_weekends !== false; // default true
+
+  // Get current time components in the target timezone.
+  const fmt = new Intl.DateTimeFormat("en-GB", {
+    timeZone: tz,
+    hour12: false,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const parts = fmt.formatToParts(now);
+  const weekday =
+    parts.find((p) => p.type === "weekday")?.value.toLowerCase() ?? "mon";
+  const hour = parseInt(
+    parts.find((p) => p.type === "hour")?.value ?? "0",
+    10,
+  );
+  const minute = parseInt(
+    parts.find((p) => p.type === "minute")?.value ?? "0",
+    10,
+  );
+
+  const [startH, startM] = startStr.split(":").map((x) => parseInt(x, 10));
+  const [endH, endM] = endStr.split(":").map((x) => parseInt(x, 10));
+
+  const nowMin = hour * 60 + minute;
+  const startMin = startH * 60 + startM;
+  const endMin = endH * 60 + endM;
+
+  const isWeekend = weekday === "sat" || weekday === "sun";
+  const inWindow =
+    nowMin >= startMin && nowMin < endMin && !(skipWeekends && isWeekend);
+
+  if (inWindow) return null;
+
+  // Advance the wall-clock in ms until we land in a valid slot. We step in
+  // whole minutes so this is cheap even across days.
+  let cursor = now.getTime();
+  const step = 60_000;
+  // Safety cap: never reschedule more than 14 days out.
+  const maxMs = 14 * 24 * 60 * 60 * 1000;
+  for (let i = 0; i < maxMs / step; i++) {
+    cursor += step;
+    const probe = new Date(cursor);
+    const pParts = fmt.formatToParts(probe);
+    const pWd =
+      pParts.find((p) => p.type === "weekday")?.value.toLowerCase() ?? "mon";
+    const pH = parseInt(
+      pParts.find((p) => p.type === "hour")?.value ?? "0",
+      10,
+    );
+    const pM = parseInt(
+      pParts.find((p) => p.type === "minute")?.value ?? "0",
+      10,
+    );
+    const pMin = pH * 60 + pM;
+    const pIsWeekend = pWd === "sat" || pWd === "sun";
+    if (pMin >= startMin && pMin < endMin && !(skipWeekends && pIsWeekend)) {
+      return cursor;
+    }
+  }
+  return cursor;
+}
+
 export const sendSequenceStep = inngest.createFunction(
   {
     id: "send-sequence-step",
     name: "Send Sequence Step",
     triggers: [{ event: "prolead/sequence.step.due" }],
   },
-  async ({ event, step }: { event: { data: { campaignLeadId: string; sequenceId: string; stepNumber: number } }; step: any }) => {
+  async ({
+    event,
+    step,
+  }: {
+    event: {
+      data: { campaignLeadId: string; sequenceId: string; stepNumber: number };
+    };
+    step: any;
+  }) => {
     const { campaignLeadId, sequenceId, stepNumber } = event.data;
     const supabase = createServiceClient();
 
@@ -75,6 +185,78 @@ export const sendSequenceStep = inngest.createFunction(
       return data;
     });
 
+    const lead = campaignLead.leads;
+
+    // ── Gate 1: send window + weekend skip ────────────
+    // Honor campaign.settings.{send_window_start,end,skip_weekends,timezone}.
+    const wait = nextAllowedSendAt(
+      new Date(),
+      (campaign.settings || {}) as CampaignSettings,
+    );
+    if (wait !== null) {
+      await step.sleepUntil("wait-for-send-window", new Date(wait));
+    }
+
+    // ── Gate 2: suppression check ─────────────────────
+    const suppressed = await step.run("check-suppression", async () => {
+      if (lead.status === "unsubscribed" || lead.status === "bounced") {
+        return { blocked: true, reason: lead.status } as const;
+      }
+      const s = await isSuppressed(supabase, campaign.org_id, lead.email);
+      if (s) return { blocked: true, reason: s.reason } as const;
+      return { blocked: false } as const;
+    });
+
+    if (suppressed.blocked) {
+      // Stop sequence; mark campaign_lead accordingly.
+      await supabase
+        .from("campaign_leads")
+        .update({ status: "unsubscribed" })
+        .eq("id", campaignLeadId);
+      await supabase.from("analytics_events").insert({
+        org_id: campaign.org_id,
+        event_type: "email_skipped_suppressed",
+        entity_type: "lead",
+        entity_id: lead.id,
+        properties: { reason: suppressed.reason, step: stepNumber },
+      });
+      return { success: false, skipped: true, reason: suppressed.reason };
+    }
+
+    // ── Gate 3: email verify (first step only) ────────
+    if (stepNumber === 1) {
+      const verifyResult = await step.run("verify-email", async () => {
+        return verifyEmail(lead.email);
+      });
+      if (!verifyResult.ok) {
+        await addSuppression(supabase, {
+          orgId: campaign.org_id,
+          email: lead.email,
+          reason: "invalid",
+          source: verifyResult.code,
+        });
+        await supabase
+          .from("leads")
+          .update({ status: "bounced" })
+          .eq("id", lead.id);
+        await supabase
+          .from("campaign_leads")
+          .update({ status: "bounced" })
+          .eq("id", campaignLeadId);
+        await supabase.from("analytics_events").insert({
+          org_id: campaign.org_id,
+          event_type: "email_invalid_presend",
+          entity_type: "lead",
+          entity_id: lead.id,
+          properties: {
+            code: verifyResult.code,
+            reason: verifyResult.reason,
+          },
+        });
+        return { success: false, skipped: true, reason: verifyResult.code };
+      }
+    }
+
     // ── Load previous emails for thread context ──────
     const previousEmails = await step.run("load-previous-emails", async () => {
       const { data } = await supabase
@@ -89,7 +271,6 @@ export const sendSequenceStep = inngest.createFunction(
     });
 
     // ── Generate email with Writer Agent ─────────────
-    const lead = campaignLead.leads;
     const generatedEmail = await step.run("generate-email", async () => {
       const voiceProfile = campaign.voice_profiles;
 
@@ -116,40 +297,99 @@ export const sendSequenceStep = inngest.createFunction(
 
     // ── Pick an email account and send ───────────────
     const sendResult = await step.run("send-email", async () => {
-      // Find an active email account with capacity remaining
+      // Find an active email account with capacity remaining for this org.
       const { data: accounts } = await supabase
         .from("email_accounts")
         .select("*")
         .eq("org_id", campaign.org_id)
         .eq("is_active", true)
-        .order("emails_sent_today", { ascending: true })
-        .limit(1);
+        .order("emails_sent_today", { ascending: true });
 
-      const account = accounts?.[0];
-      if (!account) {
-        throw new Error("No active email account available");
+      const accountWithCapacity = (accounts || []).find(
+        (a: { emails_sent_today: number; daily_limit: number }) =>
+          a.emails_sent_today < a.daily_limit,
+      );
+
+      if (!accountWithCapacity) {
+        // No capacity today — reschedule for tomorrow 07:00 in the campaign tz.
+        const tz =
+          ((campaign.settings || {}) as CampaignSettings).timezone ||
+          "Europe/Amsterdam";
+        const tomorrow = new Date();
+        tomorrow.setUTCHours(tomorrow.getUTCHours() + 24);
+        // Ask Inngest to retry via a fresh event tomorrow morning.
+        await inngest.send({
+          name: "prolead/sequence.step.due",
+          data: { campaignLeadId, sequenceId, stepNumber },
+          ts: Date.now() + 14 * 60 * 60 * 1000, // ~14h from now
+        });
+        return {
+          sent: false,
+          reason: "daily_limit_reached",
+          rescheduledFor: tomorrow.toISOString(),
+          timezone: tz,
+        } as const;
       }
 
-      // Check daily limit
-      if (account.emails_sent_today >= account.daily_limit) {
-        throw new Error(
-          `Email account ${account.email} has reached daily limit (${account.daily_limit})`,
-        );
-      }
+      const account = accountWithCapacity;
+
+      // Fetch company_profile for template wrapping + org-wide branding.
+      const { data: org } = await supabase
+        .from("organizations")
+        .select("company_profile")
+        .eq("id", campaign.org_id)
+        .single();
+      const companyProfile = (org?.company_profile || null) as
+        | Record<string, unknown>
+        | null;
+
+      // Build per-recipient unsubscribe token + URL.
+      const unsubToken = buildUnsubscribeToken({
+        email: lead.email,
+        orgId: campaign.org_id,
+        leadId: lead.id,
+      });
+      const appUrl = getAppUrl();
+      const unsubUrl = buildUnsubscribeUrl(appUrl, unsubToken);
+
+      // Wrap in template (inserts the {{UNSUBSCRIBE_URL}} placeholder).
+      const wrappedHtml = wrapEmailInTemplate({
+        bodyHtml: generatedEmail.body_html,
+        companyProfile: companyProfile as never,
+        stepNumber,
+      });
+
+      // Replace placeholder with real URL in HTML and append to plain-text.
+      const { htmlBody: finalHtml, textBody: finalText } = injectUnsubscribeUrl(
+        wrappedHtml,
+        generatedEmail.body,
+        unsubUrl,
+      );
+
+      // List-Unsubscribe headers (RFC 8058 + Gmail/Yahoo 2024 rules).
+      const mailtoDomain = account.email.split("@")[1];
+      const headers = buildListUnsubscribeHeaders({
+        appUrl,
+        token: unsubToken,
+        mailtoDomain,
+      });
 
       const result = await sendEmail({
         to: lead.email,
         subject: generatedEmail.subject,
-        htmlBody: generatedEmail.body_html,
-        textBody: generatedEmail.body,
-        fromEmail: account.email,
+        htmlBody: finalHtml,
+        textBody: finalText,
+        fromEmail: account.display_name
+          ? `${account.display_name} <${account.email}>`
+          : account.email,
+        headers,
       });
 
       if (!result.success) {
         throw new Error(`Email send failed: ${result.error}`);
       }
 
-      // Record the sent email
+      // Record the sent email.
       await supabase.from("emails").insert({
         org_id: campaign.org_id,
         lead_id: campaignLead.lead_id,
@@ -160,21 +400,38 @@ export const sendSequenceStep = inngest.createFunction(
         from_email: account.email,
         to_email: lead.email,
         subject: generatedEmail.subject,
-        body_html: generatedEmail.body_html,
-        body_text: generatedEmail.body,
+        body_html: finalHtml,
+        body_text: finalText,
         status: "sent",
         direction: "outbound",
         sent_at: new Date().toISOString(),
+        provider_message_id: result.messageId,
+        unsubscribe_token: unsubToken,
       });
 
-      // Increment the account's daily counter
+      // Increment the account's daily counter.
       await supabase
         .from("email_accounts")
         .update({ emails_sent_today: account.emails_sent_today + 1 })
         .eq("id", account.id);
 
-      return { messageId: result.messageId, accountId: account.id };
+      return {
+        sent: true,
+        messageId: result.messageId,
+        accountId: account.id,
+      } as const;
     });
+
+    if (!sendResult.sent) {
+      // Daily-limit reschedule path — do not advance the sequence.
+      return {
+        success: false,
+        campaignLeadId,
+        stepNumber,
+        rescheduled: true,
+        reason: sendResult.reason,
+      };
+    }
 
     // ── Update campaign_lead progress ────────────────
     await step.run("update-campaign-lead", async () => {
@@ -186,7 +443,6 @@ export const sendSequenceStep = inngest.createFunction(
         })
         .eq("id", campaignLeadId);
 
-      // Update lead last_activity_at
       await supabase
         .from("leads")
         .update({
@@ -210,7 +466,9 @@ export const sendSequenceStep = inngest.createFunction(
 
       if (nextStep) {
         const delayMs =
-          (nextStep.delay_days * 24 * 60 + nextStep.delay_hours * 60) * 60 * 1000;
+          (nextStep.delay_days * 24 * 60 + nextStep.delay_hours * 60) *
+          60 *
+          1000;
 
         await inngest.send({
           name: "prolead/sequence.step.due",
