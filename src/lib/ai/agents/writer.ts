@@ -1,21 +1,24 @@
-import { generateAIResponse } from "../claude";
+import { generateStructured } from "../claude";
 import {
   WRITER_AGENT_SYSTEM_PROMPT,
   buildWriteEmailPrompt,
 } from "../prompts/writer";
+import {
+  WriterSchema,
+  writerFallback,
+  type WriterResult,
+} from "../schemas/writer";
+import type { CompanyProfile } from "@/types/database";
 
-interface GeneratedEmail {
-  subject: string;
-  body: string;
-  body_html: string;
-}
+export type GeneratedEmail = WriterResult;
 
-export async function generateEmail(params: {
+export interface GenerateEmailParams {
   lead: {
     first_name: string;
     last_name: string;
     company: string;
     title?: string | null;
+    website?: string | null;
     enrichment_data?: Record<string, unknown> | null;
   };
   voiceProfile?: {
@@ -23,29 +26,34 @@ export async function generateEmail(params: {
     style_guidelines?: string | null;
     sample_emails: string[];
   };
+  companyProfile?: CompanyProfile | null;
   campaignContext?: string;
   stepNumber?: number;
   previousEmails?: string[];
-}): Promise<GeneratedEmail> {
-  const prompt = buildWriteEmailPrompt(params);
+  language?: string;
+  emailLanguage?: string;
+  leadRegion?: string;
+}
 
-  const response = await generateAIResponse({
+export async function generateEmail(
+  params: GenerateEmailParams,
+): Promise<GeneratedEmail> {
+  const userMessage = buildWriteEmailPrompt(params);
+
+  return generateStructured<WriterResult>({
+    system: WRITER_AGENT_SYSTEM_PROMPT,
+    userMessage,
     model: "claude-sonnet-4-6",
-    systemPrompt: WRITER_AGENT_SYSTEM_PROMPT,
-    userMessage: prompt,
+    maxTokens: 2048,
     temperature: 0.7,
+    schema: WriterSchema,
+    schemaName: "Writer",
+    fallback: writerFallback,
   });
-
-  const jsonMatch = response.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error("Writer Agent returned invalid response format");
-  }
-
-  return JSON.parse(jsonMatch[0]) as GeneratedEmail;
 }
 
 export async function generateEmailVariants(
-  params: Parameters<typeof generateEmail>[0],
+  params: GenerateEmailParams,
   count: number = 2,
 ): Promise<GeneratedEmail[]> {
   const variants: GeneratedEmail[] = [];

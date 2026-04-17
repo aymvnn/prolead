@@ -141,24 +141,67 @@ export async function POST(
     DAILY_SEND_LIMIT,
   );
 
-  // 9. Schedule Inngest events in daily batches
-  let eventsTriggered = 0;
-  const totalDays = Math.ceil(sortedLeads.length / dailyLimit);
+  // 8b. Real-capacity check: sum remaining daily capacity across this org's
+  //     active email accounts. If today's capacity is tighter than `dailyLimit`,
+  //     shrink today's batch and push the rest to tomorrow+. This prevents the
+  //     send-sequence-step function from fanning out 100 events to an inbox
+  //     that can only send 20 more today.
+  const { data: accounts } = await supabase
+    .from("email_accounts")
+    .select("daily_limit, emails_sent_today")
+    .eq("org_id", campaign.org_id)
+    .eq("is_active", true);
+  const dailyCapacityRemaining = (accounts ?? []).reduce(
+    (sum, a) => sum + Math.max(0, a.daily_limit - a.emails_sent_today),
+    0,
+  );
+  const todaysBatchSize = Math.min(dailyLimit, dailyCapacityRemaining);
+  const capacityWarning =
+    dailyCapacityRemaining < dailyLimit
+      ? `Today's capacity (${dailyCapacityRemaining}) is less than batch size (${dailyLimit}); today's first batch is reduced accordingly and the rest is staggered over following days.`
+      : null;
 
-  if (firstSequence && sortedLeads.length > 0) {
+  // 9. Build day-by-day batch plan. Each entry = (dayOffset, batch of leads).
+  //    Day 0 uses today's real capacity; subsequent days use full dailyLimit.
+  //    If today's capacity is 0, the plan starts at day 1 so the first batch
+  //    fires tomorrow.
+  type BatchPlan = { dayOffset: number; leads: typeof sortedLeads };
+  const plan: BatchPlan[] = [];
+  let remaining = [...sortedLeads];
+  let dayOffset = 0;
+
+  if (todaysBatchSize > 0 && remaining.length > 0) {
+    plan.push({ dayOffset: 0, leads: remaining.slice(0, todaysBatchSize) });
+    remaining = remaining.slice(todaysBatchSize);
+  }
+  // Any leads that didn't fit today go on day 1, 2, 3, ...
+  dayOffset = 1;
+  while (remaining.length > 0 && dailyLimit > 0) {
+    const chunk = remaining.slice(0, dailyLimit);
+    plan.push({ dayOffset, leads: chunk });
+    remaining = remaining.slice(dailyLimit);
+    dayOffset += 1;
+  }
+
+  let eventsTriggered = 0;
+  const totalDays = plan.length;
+
+  if (firstSequence && plan.length > 0) {
     try {
       const { inngest } = await import("@/lib/inngest/client");
 
-      for (let day = 0; day < totalDays; day++) {
-        const batchStart = day * dailyLimit;
-        const batchEnd = Math.min(batchStart + dailyLimit, sortedLeads.length);
-        const batch = sortedLeads.slice(batchStart, batchEnd);
-
+      for (const { dayOffset: day, leads: batch } of plan) {
         // Schedule this batch with a delay of `day` days
         // Day 0 = now, Day 1 = +24h, Day 2 = +48h, etc.
         const delayMs = day * 24 * 60 * 60 * 1000;
+        const dueDate = new Date(Date.now() + delayMs)
+          .toISOString()
+          .slice(0, 10);
 
         const events = batch.map((cl) => ({
+          // Idempotency: (lead, step, due-day). A retry of this activate call
+          // cannot enqueue the same step twice for the same day.
+          id: `step-due-${cl.id}-1-${dueDate}`,
           name: "prolead/sequence.step.due" as const,
           data: {
             campaignLeadId: cl.id,
@@ -231,12 +274,15 @@ export async function POST(
     message: `Campaign "${campaign.name}" is geactiveerd`,
     leads_activated: sortedLeads.length,
     daily_limit: dailyLimit,
+    todays_batch_size: todaysBatchSize,
+    daily_capacity_remaining: dailyCapacityRemaining,
     total_days: totalDays,
-    schedule: `Dag 1: leads 1-${Math.min(dailyLimit, sortedLeads.length)} (warmst)${
+    schedule: `Dag 1: leads 1-${Math.min(todaysBatchSize, sortedLeads.length)} (warmst)${
       totalDays > 1
-        ? ` → Dag ${totalDays}: leads ${(totalDays - 1) * dailyLimit + 1}-${sortedLeads.length} (koudst)`
+        ? ` → Dag ${totalDays}: rest (koudst)`
         : ""
     }`,
     sequence_events_triggered: eventsTriggered,
+    ...(capacityWarning ? { capacity_warning: capacityWarning } : {}),
   });
 }

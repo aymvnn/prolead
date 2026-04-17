@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -96,6 +98,7 @@ const statusKeys: Record<CampaignStatus, string> = {
 export default function CampaignsPage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const confirm = useConfirm();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -186,19 +189,20 @@ export default function CampaignsPage() {
       const res = await fetch(`/api/campaigns/${campaignId}/activate`, {
         method: "POST",
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (res.ok) {
         setPreviewOpen(false);
         setPreviewCampaignId(null);
-        alert(
-          `Campaign geactiveerd! ${json.leads_activated} leads gestart, ${json.sequence_events_triggered} sequence events getriggerd.`,
+        toast.success(
+          `Campaign geactiveerd — ${json.leads_activated ?? 0} leads gestart, ${json.sequence_events_triggered ?? 0} sequence events getriggerd.`,
         );
         fetchCampaigns();
       } else {
-        alert(`Activatie mislukt: ${json.error}`);
+        toast.error(`Activatie mislukt: ${json.error ?? res.statusText}`);
       }
-    } catch {
-      alert("Activatie mislukt door een netwerkfout.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Netwerkfout";
+      toast.error(`Activatie mislukt: ${msg}`);
     } finally {
       setActivating(false);
     }
@@ -214,26 +218,47 @@ export default function CampaignsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (res.ok) {
-        fetchCampaigns();
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error(
+          `Kon status niet bijwerken: ${body.error ?? res.statusText}`,
+        );
+        return;
       }
-    } catch {
-      // Silently fail
+      toast.success("Status bijgewerkt.");
+      fetchCampaigns();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Netwerkfout";
+      toast.error(`Kon status niet bijwerken: ${msg}`);
     }
   };
 
   const handleDelete = async (campaignId: string) => {
-    if (!confirm("Weet je zeker dat je deze campaign wilt verwijderen?")) return;
+    const ok = await confirm({
+      title: "Campagne verwijderen?",
+      description:
+        "Actieve campagnes worden gearchiveerd in plaats van verwijderd zodat lopende sequences niet breken.",
+      confirmLabel: "Verwijderen",
+      tone: "destructive",
+    });
+    if (!ok) return;
 
     try {
       const res = await fetch(`/api/campaigns/${campaignId}`, {
         method: "DELETE",
       });
-      if (res.ok) {
-        fetchCampaigns();
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error(
+          `Kon campagne niet verwijderen: ${body.error ?? res.statusText}`,
+        );
+        return;
       }
-    } catch {
-      // Silently fail
+      toast.success("Campagne verwijderd.");
+      fetchCampaigns();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Netwerkfout";
+      toast.error(`Kon campagne niet verwijderen: ${msg}`);
     }
   };
 

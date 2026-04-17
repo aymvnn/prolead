@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Header } from "@/components/dashboard/header";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LanguageProvider } from "@/components/language-provider";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,8 @@ export default function DashboardLayout({
             </main>
           </div>
         </div>
+        {/* Single root-mounted confirm dialog — any page can call useConfirm(). */}
+        <ConfirmDialog />
       </TooltipProvider>
     </LanguageProvider>
   );

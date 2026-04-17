@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { useOrgId } from "@/hooks/use-org-id";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { Lead, LeadStatus } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,6 +95,8 @@ const statusKeys: Record<LeadStatus, string> = {
 
 export default function LeadsPage() {
   const { t } = useTranslation();
+  const { orgId } = useOrgId();
+  const confirm = useConfirm();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -137,55 +142,70 @@ export default function LeadsPage() {
 
   async function handleAddLead(e: React.FormEvent) {
     e.preventDefault();
+    if (!orgId) {
+      toast.error("No organization found. Please sign in again.");
+      return;
+    }
 
     const { error } = await supabase.from("leads").insert({
       ...newLead,
+      org_id: orgId,
       status: "new",
     });
 
-    if (!error) {
-      setShowAddDialog(false);
-      setNewLead({
-        first_name: "",
-        last_name: "",
-        email: "",
-        company: "",
-        title: "",
-        linkedin_url: "",
-      });
-      loadLeads();
+    if (error) {
+      toast.error(`Kon lead niet toevoegen: ${error.message}`);
+      return;
     }
+
+    toast.success("Lead toegevoegd.");
+    setShowAddDialog(false);
+    setNewLead({
+      first_name: "",
+      last_name: "",
+      email: "",
+      company: "",
+      title: "",
+      linkedin_url: "",
+    });
+    loadLeads();
   }
 
   async function handleBulkDelete() {
     if (selectedIds.size === 0) return;
-    if (
-      !confirm(
-        `Weet je zeker dat je ${selectedIds.size} lead(s) wilt verwijderen?`,
-      )
-    )
-      return;
+    const ok = await confirm({
+      title: `${selectedIds.size} lead${selectedIds.size !== 1 ? "s" : ""} verwijderen?`,
+      description: "Deze actie kan niet ongedaan worden gemaakt.",
+      confirmLabel: "Verwijderen",
+      tone: "destructive",
+    });
+    if (!ok) return;
 
     setDeleting(true);
     const ids = Array.from(selectedIds);
 
-    // Delete related data first, then leads
-    await Promise.all([
-      supabase.from("lead_tags").delete().in("lead_id", ids),
-      supabase.from("lead_notes").delete().in("lead_id", ids),
-      supabase.from("lead_trigger_events").delete().in("lead_id", ids),
-    ]);
-
+    // Delete parent `leads` first — CASCADE handles lead_tags, lead_notes,
+    // and lead_trigger_events. Deleting children up front would orphan rows
+    // if the parent delete failed for any reason (RLS, FK, etc).
     const { error } = await supabase.from("leads").delete().in("id", ids);
 
-    if (!error) {
-      await loadLeads();
-    }
     setDeleting(false);
+
+    if (error) {
+      toast.error(`Kon leads niet verwijderen: ${error.message}`);
+      return;
+    }
+
+    toast.success(`${ids.length} lead${ids.length !== 1 ? "s" : ""} verwijderd.`);
+    await loadLeads();
   }
 
   async function handleBulkTag() {
     if (selectedIds.size === 0 || !bulkTag.trim()) return;
+    if (!orgId) {
+      toast.error("No organization found. Please sign in again.");
+      return;
+    }
     const ids = Array.from(selectedIds);
 
     // Get existing tags for these leads
@@ -198,12 +218,17 @@ export default function LeadsPage() {
     const existingSet = new Set(existingTags?.map((t) => t.lead_id) || []);
     const newTagInserts = ids
       .filter((id) => !existingSet.has(id))
-      .map((id) => ({ lead_id: id, tag: bulkTag.trim() }));
+      .map((id) => ({ org_id: orgId, lead_id: id, tag: bulkTag.trim() }));
 
     if (newTagInserts.length > 0) {
-      await supabase.from("lead_tags").insert(newTagInserts);
+      const { error } = await supabase.from("lead_tags").insert(newTagInserts);
+      if (error) {
+        toast.error(`Kon tag niet toevoegen: ${error.message}`);
+        return;
+      }
     }
 
+    toast.success(`Tag "${bulkTag.trim()}" toegevoegd.`);
     setBulkTag("");
     setShowTagDialog(false);
     setSelectedIds(new Set());
@@ -277,15 +302,21 @@ export default function LeadsPage() {
   }
 
   async function handleDeleteSingle(leadId: string) {
-    if (!confirm("Weet je zeker dat je deze lead wilt verwijderen?")) return;
+    const ok = await confirm({
+      title: "Lead verwijderen?",
+      description: "Deze actie kan niet ongedaan worden gemaakt.",
+      confirmLabel: "Verwijderen",
+      tone: "destructive",
+    });
+    if (!ok) return;
 
-    await Promise.all([
-      supabase.from("lead_tags").delete().eq("lead_id", leadId),
-      supabase.from("lead_notes").delete().eq("lead_id", leadId),
-      supabase.from("lead_trigger_events").delete().eq("lead_id", leadId),
-    ]);
-
-    await supabase.from("leads").delete().eq("id", leadId);
+    // Parent delete first — CASCADE handles tags/notes/trigger events.
+    const { error } = await supabase.from("leads").delete().eq("id", leadId);
+    if (error) {
+      toast.error(`Kon lead niet verwijderen: ${error.message}`);
+      return;
+    }
+    toast.success("Lead verwijderd.");
     await loadLeads();
   }
 

@@ -49,9 +49,12 @@ import {
   FileText,
 } from "lucide-react";
 import { useTranslation } from "@/components/language-provider";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 
 export default function ICPPage() {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   // ICP profiles list
   const [profiles, setProfiles] = useState<ICPProfile[]>([]);
   const [activeProfile, setActiveProfile] = useState<ICPProfile | null>(null);
@@ -316,9 +319,24 @@ export default function ICPPage() {
   }
 
   async function handleDeleteProfile(profileId: string) {
-    if (!confirm("Weet je zeker dat je dit ICP profiel wilt verwijderen?")) return;
+    const ok = await confirm({
+      title: "ICP profiel verwijderen?",
+      description:
+        "Dit profiel kan niet worden teruggehaald. Lopende campagnes die naar dit profiel verwijzen verliezen hun koppeling.",
+      confirmLabel: "Verwijderen",
+      tone: "destructive",
+    });
+    if (!ok) return;
 
-    await supabase.from("icp_profiles").delete().eq("id", profileId);
+    const { error } = await supabase
+      .from("icp_profiles")
+      .delete()
+      .eq("id", profileId);
+    if (error) {
+      toast.error(`Kon ICP profiel niet verwijderen: ${error.message}`);
+      return;
+    }
+    toast.success("ICP profiel verwijderd");
     await loadProfiles();
   }
 

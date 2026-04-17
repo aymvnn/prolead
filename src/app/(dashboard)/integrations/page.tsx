@@ -309,6 +309,7 @@ export default function IntegrationsPage() {
           const isConnected = dbInt?.status === "connected";
           const status = statusConfig[dbInt?.status || "disconnected"];
           const StatusIcon = status.icon;
+          const isWired = config.type === "resend";
 
           return (
             <Card
@@ -352,6 +353,7 @@ export default function IntegrationsPage() {
                   <Switch
                     checked={isConnected}
                     onCheckedChange={() => toggleConnection(config)}
+                    disabled={!isWired}
                   />
                 </div>
               </CardHeader>
@@ -359,34 +361,41 @@ export default function IntegrationsPage() {
                 <p className="text-xs text-neutral-500">
                   {config.description}
                 </p>
+                {!isWired && (
+                  <span className="text-xs text-muted-foreground">
+                    Not available in this version.
+                  </span>
+                )}
                 {dbInt?.last_sync_at && (
                   <p className="text-[10px] text-neutral-400">
                     {t("integrations.lastSync")}{" "}
                     {new Date(dbInt.last_sync_at).toLocaleString("nl-NL")}
                   </p>
                 )}
-                <div className="flex items-center gap-2">
-                  {isConnected && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openConfig(config)}
-                    >
-                      <Settings2 className="mr-2 h-3 w-3" />
-                      {t("integrations.settings")}
-                    </Button>
-                  )}
-                  {!isConnected && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openConfig(config)}
-                    >
-                      <Plug className="mr-2 h-3 w-3" />
-                      {t("integrations.connect")}
-                    </Button>
-                  )}
-                </div>
+                {isWired && (
+                  <div className="flex items-center gap-2">
+                    {isConnected && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openConfig(config)}
+                      >
+                        <Settings2 className="mr-2 h-3 w-3" />
+                        {t("integrations.settings")}
+                      </Button>
+                    )}
+                    {!isConnected && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openConfig(config)}
+                      >
+                        <Plug className="mr-2 h-3 w-3" />
+                        {t("integrations.connect")}
+                      </Button>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );

@@ -318,7 +318,12 @@ export const sendSequenceStep = inngest.createFunction(
         const tomorrow = new Date();
         tomorrow.setUTCHours(tomorrow.getUTCHours() + 24);
         // Ask Inngest to retry via a fresh event tomorrow morning.
+        // The `id` key makes this event idempotent: if we hit the daily-limit
+        // path multiple times in the same day (e.g. retries, restarts) we
+        // still only schedule ONE reschedule event per (lead, step, day).
+        const dateKey = new Date().toISOString().slice(0, 10);
         await inngest.send({
+          id: `step-reschedule-${campaignLeadId}-${stepNumber}-${dateKey}`,
           name: "prolead/sequence.step.due",
           data: { campaignLeadId, sequenceId, stepNumber },
           ts: Date.now() + 14 * 60 * 60 * 1000, // ~14h from now
@@ -409,11 +414,12 @@ export const sendSequenceStep = inngest.createFunction(
         unsubscribe_token: unsubToken,
       });
 
-      // Increment the account's daily counter.
-      await supabase
-        .from("email_accounts")
-        .update({ emails_sent_today: account.emails_sent_today + 1 })
-        .eq("id", account.id);
+      // Increment the account's daily counter atomically. Prior code did
+      // read-modify-write here, which lost increments under concurrent
+      // Inngest step fan-out and broke the daily-limit gate.
+      await supabase.rpc("increment_account_sent", {
+        p_account_id: account.id,
+      });
 
       return {
         sent: true,
@@ -470,7 +476,13 @@ export const sendSequenceStep = inngest.createFunction(
           60 *
           1000;
 
+        // Idempotency: `id` keyed on (lead, next-step, due-day) so a retried
+        // run of this step can't enqueue two next-step events.
+        const dueDate = new Date(Date.now() + delayMs)
+          .toISOString()
+          .slice(0, 10);
         await inngest.send({
+          id: `step-due-${campaignLeadId}-${nextStepNumber}-${dueDate}`,
           name: "prolead/sequence.step.due",
           data: {
             campaignLeadId,

@@ -1,7 +1,9 @@
 "use client";
 
 import { use, useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,6 +101,7 @@ export default function SequenceEditorPage({
   const { id } = use(params);
   const supabase = createClient();
   const { t } = useTranslation();
+  const confirm = useConfirm();
 
   const statusLabels: Record<string, string> = {
     active: t("common.active"),
@@ -169,12 +172,20 @@ export default function SequenceEditorPage({
 
   async function saveName() {
     if (!sequence || !nameDraft.trim()) return;
-    await supabase
+    const trimmed = nameDraft.trim();
+    // Check error BEFORE mutating local state — otherwise a failed write would
+    // show the new name in the UI while the DB still has the old one.
+    const { error } = await supabase
       .from("sequences")
-      .update({ name: nameDraft.trim() })
+      .update({ name: trimmed })
       .eq("id", id);
-    setSequence({ ...sequence, name: nameDraft.trim() });
+    if (error) {
+      toast.error(`Kon naam niet opslaan: ${error.message}`);
+      return;
+    }
+    setSequence({ ...sequence, name: trimmed });
     setEditingName(false);
+    toast.success("Naam opgeslagen.");
   }
 
   function cancelEditingName() {
@@ -206,9 +217,10 @@ export default function SequenceEditorPage({
     e.preventDefault();
     setSaving(true);
 
+    let res: Response;
     if (editingStep) {
       // Update existing step
-      await fetch(`/api/sequences/${id}/steps`, {
+      res = await fetch(`/api/sequences/${id}/steps`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -224,7 +236,7 @@ export default function SequenceEditorPage({
       const nextStepNumber =
         steps.length > 0 ? Math.max(...steps.map((s) => s.step_number)) + 1 : 1;
 
-      await fetch(`/api/sequences/${id}/steps`, {
+      res = await fetch(`/api/sequences/${id}/steps`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -238,17 +250,38 @@ export default function SequenceEditorPage({
     }
 
     setSaving(false);
+
+    // Keep the dialog open on failure so the user can retry without losing input.
+    if (!res.ok) {
+      const msg = await res.text().catch(() => "");
+      toast.error(`Kon stap niet opslaan${msg ? `: ${msg}` : "."}`);
+      return;
+    }
+
+    toast.success(editingStep ? "Stap bijgewerkt." : "Stap toegevoegd.");
     setDialogOpen(false);
     await loadData();
   }
 
   async function handleDeleteStep(stepId: string) {
-    if (!confirm(t("sequenceDetail.confirmDeleteStep"))) return;
+    const ok = await confirm({
+      title: t("sequenceDetail.confirmDeleteStep"),
+      confirmLabel: t("common.delete"),
+      tone: "destructive",
+    });
+    if (!ok) return;
 
-    await fetch(`/api/sequences/${id}/steps?step_id=${stepId}`, {
+    const res = await fetch(`/api/sequences/${id}/steps?step_id=${stepId}`, {
       method: "DELETE",
     });
 
+    if (!res.ok) {
+      const msg = await res.text().catch(() => "");
+      toast.error(`Kon stap niet verwijderen${msg ? `: ${msg}` : "."}`);
+      return;
+    }
+
+    toast.success("Stap verwijderd.");
     await loadData();
   }
 
@@ -466,9 +499,14 @@ export default function SequenceEditorPage({
                           <Mail className="mr-2 h-4 w-4" />
                           Email
                         </SelectItem>
-                        <SelectItem value="linkedin">
+                        {/* LinkedIn is disabled — PROLEAD currently only sends email. */}
+                        <SelectItem
+                          value="linkedin"
+                          disabled
+                          title="Coming soon — PROLEAD currently sends email only"
+                        >
                           <Link2 className="mr-2 h-4 w-4" />
-                          LinkedIn
+                          LinkedIn (coming soon)
                         </SelectItem>
                       </SelectContent>
                     </Select>

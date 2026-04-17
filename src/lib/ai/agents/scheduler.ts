@@ -1,23 +1,32 @@
-import { generateStructuredResponse } from "@/lib/ai/claude";
+import type Anthropic from "@anthropic-ai/sdk";
+import { generateStructured } from "@/lib/ai/claude";
 import {
   SCHEDULER_AGENT_SYSTEM_PROMPT,
   buildSchedulerPrompt,
 } from "@/lib/ai/prompts/scheduler";
+import {
+  SchedulerSchema,
+  schedulerFallback,
+  schedulerToolInputSchema,
+  type SchedulerResult,
+} from "@/lib/ai/schemas/scheduler";
 
-export interface SchedulerResult {
-  suggested_times: {
-    date: string;
-    start_time: string;
-    end_time: string;
-    timezone: string;
-  }[];
-  meeting_title: string;
-  meeting_message: string;
-  detected_preferences: {
-    preferred_days: string[];
-    preferred_time_range: string;
-    urgency: string;
-  };
+export type { SchedulerResult };
+
+const tools: Anthropic.Tool[] = [
+  {
+    name: "output",
+    description: "Return the structured scheduling proposal",
+    input_schema: schedulerToolInputSchema,
+  },
+];
+
+const toolChoice: Anthropic.ToolChoice = { type: "tool", name: "output" };
+
+export interface ScheduleMeetingOptions {
+  senderTimezone?: string;
+  leadRegion?: string;
+  language?: string;
 }
 
 export async function scheduleMeeting(
@@ -25,24 +34,28 @@ export async function scheduleMeeting(
   company: string,
   conversationHistory: string,
   availableSlots?: string,
+  options: ScheduleMeetingOptions = {},
 ): Promise<SchedulerResult> {
-  const userMessage = buildSchedulerPrompt(
+  const userMessage = buildSchedulerPrompt({
     leadName,
     company,
     conversationHistory,
     availableSlots,
-  );
+    senderTimezone: options.senderTimezone,
+    leadRegion: options.leadRegion,
+    language: options.language,
+  });
 
-  return generateStructuredResponse<SchedulerResult>({
-    model: "claude-haiku-4-5-20251001",
-    systemPrompt: SCHEDULER_AGENT_SYSTEM_PROMPT,
+  return generateStructured<SchedulerResult>({
+    system: SCHEDULER_AGENT_SYSTEM_PROMPT,
     userMessage,
+    model: "claude-haiku-4-5-20251001",
     maxTokens: 2048,
     temperature: 0.3,
-    parseResponse: (text) => {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON found in scheduler response");
-      return JSON.parse(jsonMatch[0]);
-    },
+    schema: SchedulerSchema,
+    schemaName: "Scheduler",
+    fallback: schedulerFallback,
+    tools,
+    toolChoice,
   });
 }

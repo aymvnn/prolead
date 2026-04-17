@@ -1,22 +1,15 @@
-import { generateAIResponse } from "../claude";
+import { generateStructured } from "../claude";
 import {
   RESEARCH_AGENT_SYSTEM_PROMPT,
   buildResearchPrompt,
 } from "../prompts/research";
+import {
+  ResearchSchema,
+  researchFallback,
+  type ResearchResult,
+} from "../schemas/research";
 
-export interface ResearchResult {
-  company_summary: string;
-  company_industry: string;
-  company_size_estimate: string;
-  company_pain_points: string[];
-  person_role_analysis: string;
-  decision_maker_level: string;
-  potential_needs: string[];
-  talking_points: string[];
-  recommended_approach: string;
-  icp_score: number;
-  icp_score_reasoning: string;
-}
+export type { ResearchResult };
 
 export async function researchLead(
   lead: {
@@ -30,21 +23,18 @@ export async function researchLead(
     employee_count?: number | null;
   },
   icpDescription?: string,
+  language: string = "en",
 ): Promise<ResearchResult> {
-  const prompt = buildResearchPrompt(lead, icpDescription);
+  const userMessage = buildResearchPrompt(lead, icpDescription, language);
 
-  const response = await generateAIResponse({
+  return generateStructured<ResearchResult>({
+    system: RESEARCH_AGENT_SYSTEM_PROMPT,
+    userMessage,
     model: "claude-sonnet-4-6",
-    systemPrompt: RESEARCH_AGENT_SYSTEM_PROMPT,
-    userMessage: prompt,
+    maxTokens: 2048,
     temperature: 0.3,
+    schema: ResearchSchema,
+    schemaName: "Research",
+    fallback: researchFallback,
   });
-
-  // Extract JSON from response
-  const jsonMatch = response.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error("Research Agent returned invalid response format");
-  }
-
-  return JSON.parse(jsonMatch[0]) as ResearchResult;
 }

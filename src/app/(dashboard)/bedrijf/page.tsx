@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { useOrgId } from "@/hooks/use-org-id";
 import type { CompanyProfile } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +40,8 @@ export default function BedrijfsprofielPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [orgId, setOrgId] = useState<string | null>(null);
+  // orgId resolved once via the shared hook — every write gates on it.
+  const { orgId } = useOrgId();
 
   // Form fields
   const [companyName, setCompanyName] = useState("");
@@ -57,39 +60,19 @@ export default function BedrijfsprofielPage() {
   const supabase = createClient();
 
   useEffect(() => {
-    loadProfile();
-  }, []);
+    // Wait until the org is resolved before hitting the org-scoped row.
+    if (!orgId) return;
+    void loadProfile(orgId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId]);
 
-  async function loadProfile() {
+  async function loadProfile(currentOrgId: string) {
     setLoading(true);
-
-    // Get current user's org
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    const { data: userData } = await supabase
-      .from("users")
-      .select("org_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData) {
-      setLoading(false);
-      return;
-    }
-
-    setOrgId(userData.org_id);
 
     const { data: org } = await supabase
       .from("organizations")
       .select("company_profile")
-      .eq("id", userData.org_id)
+      .eq("id", currentOrgId)
       .single();
 
     if (org?.company_profile) {
@@ -111,7 +94,10 @@ export default function BedrijfsprofielPage() {
   }
 
   const handleSave = useCallback(async () => {
-    if (!orgId) return;
+    if (!orgId) {
+      toast.error("No organization found. Please sign in again.");
+      return;
+    }
     setSaving(true);
     setSaved(false);
 
@@ -129,13 +115,21 @@ export default function BedrijfsprofielPage() {
       extra_context: extraContext,
     };
 
-    await supabase
+    // Must check error — a silently-failing save was the original ICP bug.
+    const { error } = await supabase
       .from("organizations")
       .update({ company_profile: profile })
       .eq("id", orgId);
 
     setSaving(false);
+
+    if (error) {
+      toast.error(`Kon bedrijfsprofiel niet opslaan: ${error.message}`);
+      return;
+    }
+
     setSaved(true);
+    toast.success("Bedrijfsprofiel opgeslagen.");
     setTimeout(() => setSaved(false), 3000);
   }, [
     orgId,

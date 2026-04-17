@@ -1,13 +1,13 @@
 /**
  * PROLEAD AI Orchestrator
  *
- * Coördineert de 6 AI agents:
+ * Coordinates the 6 AI agents:
  * 1. Research Agent (Sonnet) — Lead enrichment
- * 2. Writer Agent (Sonnet) — Email generatie
+ * 2. Writer Agent (Sonnet) — Email generation
  * 3. Responder Agent (Sonnet) — Auto-reply
- * 4. Intent Agent (Haiku) — Snelle intent classificatie
+ * 4. Intent Agent (Haiku) — Fast intent classification
  * 5. Scheduler Agent (Haiku) — Meeting planning
- * 6. Revival Agent (Sonnet) — Dead lead re-engagement
+ * 6. Revival Agent (Haiku gate + Sonnet) — Dead lead re-engagement
  */
 
 import { researchLead, type ResearchResult } from "./research";
@@ -15,12 +15,22 @@ import { generateEmail, generateEmailVariants } from "./writer";
 import { generateAutoResponse } from "./responder";
 import { detectIntent, type IntentResult } from "./intent";
 import { scheduleMeeting, type SchedulerResult } from "./scheduler";
-import { generateRevivalEmail, type RevivalResult } from "./revival";
+import {
+  generateRevivalEmail,
+  shouldReviveLead,
+  type RevivalResult,
+} from "./revival";
+
+export interface OrchestratorOptions {
+  language?: string;
+  senderTimezone?: string;
+  leadRegion?: string;
+}
 
 /**
- * Volledige outreach pipeline voor een nieuwe lead:
- * 1. Research → Enrichment data ophalen
- * 2. Writer → Gepersonaliseerde email genereren
+ * Full outreach pipeline for a new lead:
+ * 1. Research → Enrichment
+ * 2. Writer → Personalized email
  */
 export async function processNewLead(
   lead: {
@@ -40,38 +50,41 @@ export async function processNewLead(
     sample_emails: string[];
   },
   campaignContext?: string,
+  options: OrchestratorOptions = {},
 ): Promise<{
   research: ResearchResult;
   email: { subject: string; body: string; body_html: string };
 }> {
-  // Stap 1: Research
-  const research = await researchLead(lead, icpDescription);
+  const language = options.language || "en";
+  const leadRegion = options.leadRegion || "nl";
 
-  // Stap 2: Genereer email op basis van research
+  // Step 1: Research
+  const research = await researchLead(lead, icpDescription, language);
+
+  // Step 2: Generate email based on research
   const email = await generateEmail({
     lead: {
       first_name: lead.first_name,
       last_name: lead.last_name,
       company: lead.company,
       title: lead.title,
+      website: lead.website,
       enrichment_data: research as unknown as Record<string, unknown>,
     },
     voiceProfile,
     campaignContext,
     stepNumber: 1,
+    language,
+    leadRegion,
   });
 
   return { research, email };
 }
 
 /**
- * Verwerk een inkomend bericht:
- * 1. Intent Agent → Classificeer intent (snel, Haiku)
- * 2. Op basis van intent:
- *    - meeting → Scheduler Agent
- *    - question/objection → Responder Agent
- *    - unsubscribe → Markeer lead, geen reply
- *    - not_interested → Gentle close
+ * Process an inbound message:
+ * 1. Intent Agent → Classify (fast, Haiku)
+ * 2. Route to the right follow-up agent
  */
 export async function processInboundMessage(
   message: string,
@@ -82,26 +95,34 @@ export async function processInboundMessage(
     conversationHistory?: Array<{ role: string; content: string }>;
     campaignContext?: string;
   },
+  options: OrchestratorOptions = {},
 ): Promise<{
   intent: IntentResult;
   response?: string;
   meetingProposal?: SchedulerResult;
   action: "respond" | "schedule" | "escalate" | "close" | "unsubscribe";
 }> {
-  // Stap 1: Snelle intent classificatie (Haiku — goedkoop & snel)
-  const intent = await detectIntent(message);
+  const language = options.language || "en";
+  const senderTimezone = options.senderTimezone || "Europe/Amsterdam";
+  const leadRegion = options.leadRegion || "nl";
 
-  // Stap 2: Route naar juiste agent
+  // Step 1: Fast intent classification (Haiku)
+  const intent = await detectIntent(message, language);
+
+  // Step 2: Route
   switch (intent.intent) {
     case "meeting": {
-      const historyText = context.conversationHistory
-        ?.map((m) => `${m.role}: ${m.content}`)
-        .join("\n\n") || message;
+      const historyText =
+        context.conversationHistory
+          ?.map((m) => `${m.role}: ${m.content}`)
+          .join("\n\n") || message;
 
       const meetingProposal = await scheduleMeeting(
         context.leadName,
         context.company,
         historyText,
+        undefined,
+        { senderTimezone, leadRegion, language },
       );
 
       return {
@@ -124,6 +145,8 @@ export async function processInboundMessage(
           company: context.company,
         },
         businessContext: context.campaignContext,
+        language,
+        leadRegion,
       });
 
       if (autoResponse.should_escalate) {
@@ -155,7 +178,10 @@ export async function processInboundMessage(
           first_name: context.firstName,
           company: context.company,
         },
-        businessContext: "De lead is niet geïnteresseerd. Sluit beleefd af.",
+        businessContext:
+          "The lead is not interested. Close the conversation politely.",
+        language,
+        leadRegion,
       });
 
       return {
@@ -174,7 +200,7 @@ export async function processInboundMessage(
 }
 
 /**
- * Dead Lead Revival pipeline
+ * Dead lead revival pipeline (two-pass: Haiku gate → Sonnet writer).
  */
 export async function processDeadLeadRevival(
   leadName: string,
@@ -186,18 +212,24 @@ export async function processDeadLeadRevival(
     detected_at: string;
   },
   campaignContext?: string,
+  options: OrchestratorOptions = {},
 ): Promise<RevivalResult> {
+  const language = options.language || "en";
+  const leadRegion = options.leadRegion || "nl";
+
   return generateRevivalEmail(
     leadName,
     company,
     previousInteraction,
     triggerEvent,
     campaignContext,
+    language,
+    leadRegion,
   );
 }
 
 /**
- * A/B Test email generatie
+ * A/B test email generation
  */
 export async function generateABTestEmails(
   lead: {
@@ -205,6 +237,7 @@ export async function generateABTestEmails(
     last_name: string;
     company: string;
     title?: string | null;
+    website?: string | null;
     enrichment_data?: Record<string, unknown> | null;
   },
   voiceProfile?: {
@@ -213,12 +246,18 @@ export async function generateABTestEmails(
     sample_emails: string[];
   },
   campaignContext?: string,
+  options: OrchestratorOptions = {},
 ) {
+  const language = options.language || "en";
+  const leadRegion = options.leadRegion || "nl";
+
   return generateEmailVariants({
     lead,
     voiceProfile,
     campaignContext,
     stepNumber: 1,
+    language,
+    leadRegion,
   });
 }
 
@@ -230,4 +269,5 @@ export {
   detectIntent,
   scheduleMeeting,
   generateRevivalEmail,
+  shouldReviveLead,
 };

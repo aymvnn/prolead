@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { useOrgId } from "@/hooks/use-org-id";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,6 +77,8 @@ const statusColors: Record<string, string> = {
 
 export default function SequencesPage() {
   const { t } = useTranslation();
+  const { orgId } = useOrgId();
+  const confirm = useConfirm();
 
   const statusLabels: Record<string, string> = {
     active: t("common.active"),
@@ -121,32 +126,61 @@ export default function SequencesPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!newSequence.name.trim() || !newSequence.campaign_id) return;
+    if (!orgId) {
+      toast.error("No organization found. Please sign in again.");
+      return;
+    }
 
     const { error } = await supabase.from("sequences").insert({
+      org_id: orgId,
       name: newSequence.name.trim(),
       campaign_id: newSequence.campaign_id,
       status: "draft",
       steps_count: 0,
     });
 
-    if (!error) {
-      setShowCreateDialog(false);
-      setNewSequence({ name: "", campaign_id: "" });
-      await loadData();
+    if (error) {
+      toast.error(`Kon sequence niet aanmaken: ${error.message}`);
+      return;
     }
+
+    toast.success("Sequence aangemaakt.");
+    setShowCreateDialog(false);
+    setNewSequence({ name: "", campaign_id: "" });
+    await loadData();
   }
 
   async function updateStatus(id: string, status: string) {
-    await supabase.from("sequences").update({ status }).eq("id", id);
+    const { error } = await supabase
+      .from("sequences")
+      .update({ status })
+      .eq("id", id);
+    if (error) {
+      toast.error(`Kon status niet bijwerken: ${error.message}`);
+      return;
+    }
     await loadData();
   }
 
   async function deleteSequence(id: string) {
-    if (!confirm("Weet je zeker dat je deze sequence wilt verwijderen?"))
-      return;
+    const ok = await confirm({
+      title: "Sequence verwijderen?",
+      description:
+        "Alle stappen in deze sequence worden ook verwijderd. Dit kan niet ongedaan worden gemaakt.",
+      confirmLabel: "Verwijderen",
+      tone: "destructive",
+    });
+    if (!ok) return;
 
-    await supabase.from("sequence_steps").delete().eq("sequence_id", id);
-    await supabase.from("sequences").delete().eq("id", id);
+    // Delete the parent FIRST — the `ON DELETE CASCADE` on sequence_steps
+    // will clean up children automatically. Deleting children up-front would
+    // leave orphaned data behind if the parent delete failed.
+    const { error } = await supabase.from("sequences").delete().eq("id", id);
+    if (error) {
+      toast.error(`Kon sequence niet verwijderen: ${error.message}`);
+      return;
+    }
+    toast.success("Sequence verwijderd.");
     await loadData();
   }
 

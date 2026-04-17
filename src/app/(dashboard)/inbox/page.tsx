@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import type {
   Conversation,
@@ -183,11 +184,17 @@ export default function InboxPage() {
       .update({ messages: updatedMessages })
       .eq("id", selected.id);
 
-    if (!error) {
-      setReplyText("");
-      loadConversations();
-    }
     setSending(false);
+
+    if (error) {
+      // Keep the draft in the textarea so the user doesn't lose their reply.
+      toast.error(`Kon antwoord niet versturen: ${error.message}`);
+      return;
+    }
+
+    toast.success("Antwoord verstuurd.");
+    setReplyText("");
+    loadConversations();
   }
 
   async function updateConversationStatus(
@@ -199,11 +206,14 @@ export default function InboxPage() {
       .from("conversations")
       .update({ status: newStatus })
       .eq("id", id);
-
-    if (!error) {
-      loadConversations();
-    }
     setUpdating(false);
+
+    if (error) {
+      toast.error(`Kon status niet bijwerken: ${error.message}`);
+      return;
+    }
+    toast.success("Status bijgewerkt.");
+    loadConversations();
   }
 
   return (

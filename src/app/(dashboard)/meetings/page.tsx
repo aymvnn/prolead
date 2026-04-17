@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { useOrgId } from "@/hooks/use-org-id";
 import type { Meeting, MeetingStatus, Lead } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,6 +85,7 @@ const statusKeys: Record<MeetingStatus, string> = {
 
 export default function MeetingsPage() {
   const { t } = useTranslation();
+  const { orgId } = useOrgId();
   const [meetings, setMeetings] = useState<MeetingWithLead[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -176,10 +179,15 @@ export default function MeetingsPage() {
     e.preventDefault();
     if (!formTitle.trim() || !formLeadId || !formStartTime || !formEndTime)
       return;
+    if (!orgId) {
+      toast.error("No organization found. Please sign in again.");
+      return;
+    }
 
     setSaving(true);
 
     const { error } = await supabase.from("meetings").insert({
+      org_id: orgId,
       title: formTitle.trim(),
       lead_id: formLeadId,
       start_time: new Date(formStartTime).toISOString(),
@@ -189,12 +197,17 @@ export default function MeetingsPage() {
       timezone: "Europe/Amsterdam",
     });
 
-    if (!error) {
-      setShowAddDialog(false);
-      resetForm();
-      loadData();
-    }
     setSaving(false);
+
+    if (error) {
+      toast.error(`Kon meeting niet inplannen: ${error.message}`);
+      return;
+    }
+
+    toast.success("Meeting ingepland.");
+    setShowAddDialog(false);
+    resetForm();
+    loadData();
   }
 
   async function updateMeetingStatus(id: string, newStatus: MeetingStatus) {
@@ -203,9 +216,11 @@ export default function MeetingsPage() {
       .update({ status: newStatus })
       .eq("id", id);
 
-    if (!error) {
-      loadData();
+    if (error) {
+      toast.error(`Kon status niet bijwerken: ${error.message}`);
+      return;
     }
+    loadData();
   }
 
   function getLeadName(m: MeetingWithLead): string {

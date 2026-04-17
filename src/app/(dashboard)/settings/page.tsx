@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
+import { useOrgId } from "@/hooks/use-org-id";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -449,6 +452,8 @@ function GeneralTab() {
 
 function EmailTab() {
   const supabase = createClient();
+  const { orgId } = useOrgId();
+  const confirm = useConfirm();
   const [accounts, setAccounts] = useState<EmailAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
@@ -482,24 +487,13 @@ function EmailTab() {
 
   async function handleAdd() {
     if (!newEmail) return;
+    if (!orgId) {
+      toast.error("No organization found. Please sign in again.");
+      return;
+    }
     setSaving(true);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    // Determine org_id — grab first org if available
-    let orgId = "";
-    if (user) {
-      const { data: profile } = await supabase
-        .from("users")
-        .select("org_id")
-        .eq("id", user.id)
-        .single();
-      orgId = profile?.org_id ?? "";
-    }
-
-    await supabase.from("email_accounts").insert({
+    const { error } = await supabase.from("email_accounts").insert({
       org_id: orgId,
       email: newEmail,
       display_name: newDisplayName || null,
@@ -510,25 +504,48 @@ function EmailTab() {
       is_active: true,
     });
 
+    setSaving(false);
+
+    if (error) {
+      toast.error(`Kon email account niet toevoegen: ${error.message}`);
+      return;
+    }
+
+    toast.success("Email account toegevoegd.");
     setNewEmail("");
     setNewDisplayName("");
     setNewProvider("resend");
     setNewDailyLimit("50");
     setAddOpen(false);
-    setSaving(false);
     loadAccounts();
   }
 
   async function handleToggleActive(account: EmailAccount) {
-    await supabase
+    const { error } = await supabase
       .from("email_accounts")
       .update({ is_active: !account.is_active })
       .eq("id", account.id);
+    if (error) {
+      toast.error(`Kon account niet bijwerken: ${error.message}`);
+      return;
+    }
     loadAccounts();
   }
 
   async function handleDelete(id: string) {
-    await supabase.from("email_accounts").delete().eq("id", id);
+    const ok = await confirm({
+      title: "Email account verwijderen?",
+      description: "Lopende campagnes die dit account gebruiken worden gepauzeerd.",
+      confirmLabel: "Verwijderen",
+      tone: "destructive",
+    });
+    if (!ok) return;
+    const { error } = await supabase.from("email_accounts").delete().eq("id", id);
+    if (error) {
+      toast.error(`Kon email account niet verwijderen: ${error.message}`);
+      return;
+    }
+    toast.success("Email account verwijderd.");
     loadAccounts();
   }
 
@@ -762,6 +779,8 @@ function EmailTab() {
 
 function VoiceTab() {
   const supabase = createClient();
+  const { orgId } = useOrgId();
+  const confirm = useConfirm();
   const [profiles, setProfiles] = useState<VoiceProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
@@ -812,7 +831,7 @@ function VoiceTab() {
 
     if (editProfile) {
       // Update existing
-      await supabase
+      const { error } = await supabase
         .from("voice_profiles")
         .update({
           name: formName,
@@ -820,38 +839,52 @@ function VoiceTab() {
           tone_description: formToneDescription,
         })
         .eq("id", editProfile.id);
+      setSaving(false);
+      if (error) {
+        toast.error(`Kon voice profile niet opslaan: ${error.message}`);
+        return;
+      }
+      toast.success("Voice profile bijgewerkt.");
     } else {
-      // Create new
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      let orgId = "";
-      if (user) {
-        const { data: profile } = await supabase
-          .from("users")
-          .select("org_id")
-          .eq("id", user.id)
-          .single();
-        orgId = profile?.org_id ?? "";
+      if (!orgId) {
+        setSaving(false);
+        toast.error("No organization found. Please sign in again.");
+        return;
       }
 
-      await supabase.from("voice_profiles").insert({
+      const { error } = await supabase.from("voice_profiles").insert({
         org_id: orgId,
         name: formName,
         sample_emails: sampleEmails,
         tone_description: formToneDescription,
       });
+      setSaving(false);
+      if (error) {
+        toast.error(`Kon voice profile niet aanmaken: ${error.message}`);
+        return;
+      }
+      toast.success("Voice profile aangemaakt.");
     }
 
     resetForm();
     setAddOpen(false);
-    setSaving(false);
     loadProfiles();
   }
 
   async function handleDelete(id: string) {
-    await supabase.from("voice_profiles").delete().eq("id", id);
+    const ok = await confirm({
+      title: "Voice profile verwijderen?",
+      description: "Campagnes die dit profiel gebruiken moeten opnieuw worden geconfigureerd.",
+      confirmLabel: "Verwijderen",
+      tone: "destructive",
+    });
+    if (!ok) return;
+    const { error } = await supabase.from("voice_profiles").delete().eq("id", id);
+    if (error) {
+      toast.error(`Kon voice profile niet verwijderen: ${error.message}`);
+      return;
+    }
+    toast.success("Voice profile verwijderd.");
     loadProfiles();
   }
 

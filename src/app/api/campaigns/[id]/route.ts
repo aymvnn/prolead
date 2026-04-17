@@ -104,7 +104,12 @@ export async function PUT(
   return NextResponse.json({ data });
 }
 
-// DELETE /api/campaigns/[id] - Delete campaign and related data
+// DELETE /api/campaigns/[id] - Archive-if-active, else hard-delete.
+//
+// If any `campaign_leads` rows are still `active` or `paused`, Inngest has
+// pending events referencing this campaign. A hard-delete would cause
+// "campaign_lead not found" noise in Inngest. Instead we flip the campaign to
+// `status='archived'` and let in-flight events die gracefully.
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -120,14 +125,51 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Delete campaign_leads, sequences (cascades to steps), emails, conversations
+  // Resolve the user's org_id so we can scope the delete (belt + suspenders).
+  const { data: userRow } = await supabase
+    .from("users")
+    .select("org_id")
+    .eq("id", user.id)
+    .single();
+  const orgId = userRow?.org_id as string | undefined;
+
+  // Count in-flight campaign_leads. If any, archive instead of delete.
+  const { count: liveLeadsCount } = await supabase
+    .from("campaign_leads")
+    .select("id", { count: "exact", head: true })
+    .eq("campaign_id", id)
+    .in("status", ["active", "paused"]);
+
+  if ((liveLeadsCount ?? 0) > 0) {
+    const archiveQuery = supabase
+      .from("campaigns")
+      .update({ status: "archived" })
+      .eq("id", id);
+    const { error: archiveError } = orgId
+      ? await archiveQuery.eq("org_id", orgId)
+      : await archiveQuery;
+
+    if (archiveError) {
+      return NextResponse.json(
+        { error: archiveError.message },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true, archived: true });
+  }
+
+  // Safe to hard-delete. campaign_leads are all in terminal states.
   await Promise.all([
     supabase.from("campaign_leads").delete().eq("campaign_id", id),
     supabase.from("emails").update({ campaign_id: null }).eq("campaign_id", id),
   ]);
 
   // Sequences and steps cascade via FK
-  const { error } = await supabase.from("campaigns").delete().eq("id", id);
+  const deleteQuery = supabase.from("campaigns").delete().eq("id", id);
+  const { error } = orgId
+    ? await deleteQuery.eq("org_id", orgId)
+    : await deleteQuery;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

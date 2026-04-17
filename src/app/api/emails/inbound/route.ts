@@ -1,6 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { processInboundMessage } from "@/lib/ai/agents/orchestrator";
+
+// Service-role client: inbound webhooks never carry a user session cookie,
+// and we need to write across org boundaries (leads, conversations, emails).
+function supa() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
+
+/**
+ * Gate: require `x-prolead-inbound-secret` to match INBOUND_SECRET.
+ * In production, missing/wrong secret returns 401. In dev, we warn and allow.
+ */
+function checkInboundSecret(request: NextRequest): { ok: boolean } {
+  const expected = process.env.INBOUND_SECRET;
+  const provided = request.headers.get("x-prolead-inbound-secret");
+  if (!expected) {
+    if (process.env.NODE_ENV === "production") {
+      console.error(
+        "[inbound] INBOUND_SECRET is not set — refusing inbound in production.",
+      );
+      return { ok: false };
+    }
+    console.warn(
+      "[inbound] INBOUND_SECRET is not set — allowing inbound in non-production env.",
+    );
+    return { ok: true };
+  }
+  if (!provided || provided !== expected) {
+    return { ok: false };
+  }
+  return { ok: true };
+}
 
 /**
  * POST /api/emails/inbound
@@ -17,7 +51,11 @@ import { processInboundMessage } from "@/lib/ai/agents/orchestrator";
  * 5. Pauses sequence for this lead
  */
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
+  if (!checkInboundSecret(request).ok) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const supabase = supa();
 
   const body = await request.json();
   const { fromEmail, messageBody, subject } = body;
@@ -263,6 +301,15 @@ export async function POST(request: NextRequest) {
         status: "escalated",
       })
       .eq("id", conversation.id);
+
+    // Pause the sequence for this lead so a broken AI pipeline doesn't keep
+    // firing follow-up emails at someone who just replied. A human will
+    // resume from /inbox.
+    await supabase
+      .from("campaign_leads")
+      .update({ status: "paused" })
+      .eq("lead_id", lead.id)
+      .eq("status", "active");
 
     console.error("Inbound processing error:", error);
 

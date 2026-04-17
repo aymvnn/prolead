@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -239,10 +240,14 @@ export default function NewCampaignPage() {
     }
   };
 
+  const [formError, setFormError] = useState<string | null>(null);
+
   const handleCreate = async () => {
     if (!campaignName.trim()) return;
 
     setSaving(true);
+    setFormError(null);
+    let campaignId: string | null = null;
     try {
       // 1. Create campaign
       const campaignRes = await fetch("/api/campaigns", {
@@ -261,16 +266,19 @@ export default function NewCampaignPage() {
         }),
       });
 
-      const campaignJson = await campaignRes.json();
+      const campaignJson = await campaignRes.json().catch(() => ({}));
       if (!campaignRes.ok || !campaignJson.data) {
-        alert(`${t("newCampaign.createError")}: ${campaignJson.error || t("newCampaign.unknownError")}`);
+        const msg = `${t("newCampaign.createError")}: ${campaignJson.error || t("newCampaign.unknownError")}`;
+        setFormError(msg);
+        toast.error(msg);
         setSaving(false);
         return;
       }
 
-      const campaignId = campaignJson.data.id;
+      campaignId = campaignJson.data.id;
 
-      // 2. Create sequence
+      // 2. Create sequence — if this fails, roll back the campaign so we
+      // don't leave a zombie campaign with no sequence attached.
       const seqRes = await fetch("/api/sequences", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -280,41 +288,77 @@ export default function NewCampaignPage() {
         }),
       });
 
+      if (!seqRes.ok) {
+        const seqJson = await seqRes.json().catch(() => ({}));
+        const msg = `Kon sequence niet aanmaken: ${seqJson.error || seqRes.statusText}`;
+        setFormError(msg);
+        toast.error(msg);
+        await fetch(`/api/campaigns/${campaignId}`, { method: "DELETE" }).catch(
+          () => {},
+        );
+        setSaving(false);
+        return;
+      }
+
       const seqJson = await seqRes.json();
+      if (!seqJson.data) {
+        const msg = "Sequence response was leeg.";
+        setFormError(msg);
+        toast.error(msg);
+        await fetch(`/api/campaigns/${campaignId}`, { method: "DELETE" }).catch(
+          () => {},
+        );
+        setSaving(false);
+        return;
+      }
 
-      if (seqRes.ok && seqJson.data) {
-        const sequenceId = seqJson.data.id;
+      const sequenceId = seqJson.data.id;
 
-        // 3. Create sequence steps
-        for (const step of sequenceSteps) {
-          await fetch(`/api/sequences/${sequenceId}/steps`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              step_number: step.step_number,
-              channel: step.channel,
-              delay_days: step.delay_days,
-              delay_hours: step.delay_hours,
-            }),
-          });
+      // 3. Create sequence steps — check each.
+      for (const step of sequenceSteps) {
+        const stepRes = await fetch(`/api/sequences/${sequenceId}/steps`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            step_number: step.step_number,
+            channel: step.channel,
+            delay_days: step.delay_days,
+            delay_hours: step.delay_hours,
+          }),
+        });
+        if (!stepRes.ok) {
+          const msg = `Kon stap ${step.step_number} niet aanmaken.`;
+          setFormError(msg);
+          toast.error(msg);
+          setSaving(false);
+          return;
         }
       }
 
       // 4. Add selected leads
       if (selectedLeadIds.size > 0) {
-        await fetch(`/api/campaigns/${campaignId}/leads`, {
+        const leadsRes = await fetch(`/api/campaigns/${campaignId}/leads`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             lead_ids: Array.from(selectedLeadIds),
           }),
         });
+        if (!leadsRes.ok) {
+          const msg = "Kon geselecteerde leads niet aan campagne toevoegen.";
+          setFormError(msg);
+          toast.error(msg);
+          setSaving(false);
+          return;
+        }
       }
 
-      // Redirect to campaigns list
+      toast.success("Campagne aangemaakt.");
       router.push("/campaigns");
-    } catch {
-      alert(t("newCampaign.genericError"));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t("newCampaign.genericError");
+      setFormError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -595,7 +639,14 @@ export default function NewCampaignPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="email">Email</SelectItem>
-                        <SelectItem value="linkedin">LinkedIn</SelectItem>
+                        {/* LinkedIn disabled — PROLEAD currently only sends email. */}
+                        <SelectItem
+                          value="linkedin"
+                          disabled
+                          title="Coming soon — PROLEAD currently sends email only"
+                        >
+                          LinkedIn (coming soon)
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -784,6 +835,14 @@ export default function NewCampaignPage() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Inline form error — surfaces the same message as the toast so the
+          user can still see it after the toast auto-dismisses. */}
+      {formError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300">
+          {formError}
+        </div>
       )}
 
       {/* Navigation Buttons */}

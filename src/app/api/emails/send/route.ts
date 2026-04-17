@@ -249,10 +249,8 @@ export async function POST(request: NextRequest) {
         unsubscribe_token: unsubToken,
       })
       .eq("id", emailRecord.id),
-    supabase
-      .from("email_accounts")
-      .update({ emails_sent_today: account.emails_sent_today + 1 })
-      .eq("id", email_account_id),
+    // Atomic increment — concurrent sends would otherwise race and lose writes.
+    supabase.rpc("increment_account_sent", { p_account_id: email_account_id }),
   ]);
 
   return NextResponse.json({

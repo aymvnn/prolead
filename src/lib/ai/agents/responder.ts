@@ -1,21 +1,15 @@
-import { generateAIResponse } from "../claude";
+import { generateStructured } from "../claude";
 import {
   RESPONDER_AGENT_SYSTEM_PROMPT,
   buildRespondPrompt,
 } from "../prompts/responder";
-import type { IntentClassification } from "@/types/database";
+import {
+  ResponderSchema,
+  responderFallback,
+  type ResponderResult,
+} from "../schemas/responder";
 
-interface AutoResponse {
-  intent: IntentClassification;
-  confidence: number;
-  should_respond: boolean;
-  should_escalate: boolean;
-  escalation_reason: string | null;
-  response_subject: string;
-  response_body: string;
-  response_body_html: string;
-  internal_note: string;
-}
+export type AutoResponse = ResponderResult;
 
 export async function generateAutoResponse(params: {
   incomingMessage: string;
@@ -25,20 +19,19 @@ export async function generateAutoResponse(params: {
     company: string;
   };
   businessContext?: string;
+  language?: string;
+  leadRegion?: string;
 }): Promise<AutoResponse> {
-  const prompt = buildRespondPrompt(params);
+  const userMessage = buildRespondPrompt(params);
 
-  const response = await generateAIResponse({
+  return generateStructured<ResponderResult>({
+    system: RESPONDER_AGENT_SYSTEM_PROMPT,
+    userMessage,
     model: "claude-sonnet-4-6",
-    systemPrompt: RESPONDER_AGENT_SYSTEM_PROMPT,
-    userMessage: prompt,
+    maxTokens: 1536,
     temperature: 0.4,
+    schema: ResponderSchema,
+    schemaName: "Responder",
+    fallback: responderFallback,
   });
-
-  const jsonMatch = response.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error("Responder Agent returned invalid response format");
-  }
-
-  return JSON.parse(jsonMatch[0]) as AutoResponse;
 }

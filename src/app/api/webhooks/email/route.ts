@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { addSuppression } from "@/lib/email/suppression";
+import { verifyResendWebhook } from "@/lib/email/webhook-verify";
 
 /**
  * Resend webhook event types we handle.
@@ -43,7 +44,15 @@ function createService() {
 // POST /api/webhooks/email — Resend webhook handler
 export async function POST(request: NextRequest) {
   try {
-    const payload = (await request.json()) as ResendWebhookPayload;
+    // Read the raw body first — Svix signs the literal bytes we received.
+    // Parsing + re-serializing would change whitespace and break HMAC.
+    const raw = await request.text();
+
+    if (!(await verifyResendWebhook(request.headers, raw))) {
+      return new Response("unauthorized", { status: 401 });
+    }
+
+    const payload = JSON.parse(raw) as ResendWebhookPayload;
     const { type, data } = payload;
 
     if (!type || !data) {
@@ -60,29 +69,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    // Primary match: provider_message_id (persisted at send time).
-    // Fallback: (to_email, subject) — brittle but keeps old rows working.
+    // Match ONLY on provider_message_id. The old (to_email, subject) fallback
+    // misattributed events across re-sends and replies; safer to ack-and-skip.
     const findEmail = async () => {
-      if (data.email_id) {
-        const { data: row } = await supabase
-          .from("emails")
-          .select("id, org_id, to_email")
-          .eq("provider_message_id", data.email_id)
-          .maybeSingle();
-        if (row) return row;
-      }
-      const { data: fallback } = await supabase
+      if (!data.email_id) return null;
+      const { data: row } = await supabase
         .from("emails")
         .select("id, org_id, to_email")
-        .eq("to_email", toEmail)
-        .eq("subject", data.subject)
-        .order("created_at", { ascending: false })
-        .limit(1)
+        .eq("provider_message_id", data.email_id)
         .maybeSingle();
-      return fallback;
+      return row ?? null;
     };
 
     const emailRow = await findEmail();
+
+    // Unknown message_id → acknowledge so Resend doesn't keep retrying.
+    if (!emailRow) {
+      return NextResponse.json({ received: true, matched: false });
+    }
 
     switch (type) {
       case "email.delivered": {

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { useOrgId } from "@/hooks/use-org-id";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { EmailTemplate } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +47,8 @@ import { useTranslation } from "@/components/language-provider";
 
 export default function TemplatesPage() {
   const { t } = useTranslation();
+  const { orgId } = useOrgId();
+  const confirm = useConfirm();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -124,6 +129,10 @@ export default function TemplatesPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!formName.trim() || !formSubject.trim() || !formBody.trim()) return;
+    if (!orgId) {
+      toast.error("No organization found. Please sign in again.");
+      return;
+    }
 
     setSaving(true);
 
@@ -141,30 +150,49 @@ export default function TemplatesPage() {
         .from("email_templates")
         .update(payload)
         .eq("id", editingId);
-      if (!error) {
-        setShowDialog(false);
-        loadTemplates();
+      setSaving(false);
+      if (error) {
+        toast.error(`Kon template niet opslaan: ${error.message}`);
+        return;
       }
+      toast.success("Template opgeslagen.");
+      setShowDialog(false);
+      loadTemplates();
     } else {
-      const { error } = await supabase.from("email_templates").insert(payload);
-      if (!error) {
-        setShowDialog(false);
-        loadTemplates();
+      // New templates MUST carry org_id — RLS rejects inserts without it.
+      const { error } = await supabase
+        .from("email_templates")
+        .insert({ ...payload, org_id: orgId });
+      setSaving(false);
+      if (error) {
+        toast.error(`Kon template niet aanmaken: ${error.message}`);
+        return;
       }
+      toast.success("Template aangemaakt.");
+      setShowDialog(false);
+      loadTemplates();
     }
-    setSaving(false);
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Weet je zeker dat je dit template wilt verwijderen?")) return;
+    const ok = await confirm({
+      title: "Template verwijderen?",
+      description: "Deze actie kan niet ongedaan worden gemaakt.",
+      confirmLabel: "Verwijderen",
+      tone: "destructive",
+    });
+    if (!ok) return;
     const { error } = await supabase
       .from("email_templates")
       .delete()
       .eq("id", id);
-    if (!error) {
-      if (editingId === id) setShowDialog(false);
-      loadTemplates();
+    if (error) {
+      toast.error(`Kon template niet verwijderen: ${error.message}`);
+      return;
     }
+    toast.success("Template verwijderd.");
+    if (editingId === id) setShowDialog(false);
+    loadTemplates();
   }
 
   const previewVariables = useMemo(() => {

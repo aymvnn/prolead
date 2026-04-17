@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { useOrgId } from "@/hooks/use-org-id";
 import type { Lead, LeadNote, LeadTag, LeadStatus } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +66,7 @@ export default function LeadDetailPage({
   const { id } = use(params);
   const router = useRouter();
   const { t } = useTranslation();
+  const { orgId } = useOrgId();
 
   const statusLabels: Record<LeadStatus, string> = {
     new: t("status.new"),
@@ -120,29 +123,49 @@ export default function LeadDetailPage({
 
   async function updateStatus(status: string) {
     if (!lead) return;
-    await supabase.from("leads").update({ status }).eq("id", lead.id);
+    const { error } = await supabase
+      .from("leads")
+      .update({ status })
+      .eq("id", lead.id);
+    if (error) {
+      toast.error(`Kon status niet bijwerken: ${error.message}`);
+      return;
+    }
     setLead({ ...lead, status: status as LeadStatus });
+    toast.success("Status bijgewerkt.");
   }
 
   async function updateField(field: string, value: string) {
     if (!lead) return;
     const updates: Record<string, unknown> = { [field]: value || null };
-    await supabase.from("leads").update(updates).eq("id", lead.id);
+    const { error } = await supabase
+      .from("leads")
+      .update(updates)
+      .eq("id", lead.id);
+    if (error) {
+      toast.error(`Kon veld niet opslaan: ${error.message}`);
+      return;
+    }
     setLead({ ...lead, [field]: value || null });
     setEditing(null);
   }
 
   async function addNote() {
     if (!newNote.trim() || !lead) return;
+    if (!orgId) {
+      toast.error("No organization found. Please sign in again.");
+      return;
+    }
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("lead_notes")
       .insert({
+        org_id: orgId,
         lead_id: lead.id,
         user_id: user.id,
         content: newNote,
@@ -150,19 +173,34 @@ export default function LeadDetailPage({
       .select()
       .single();
 
-    if (data) {
-      setNotes([data, ...notes]);
-      setNewNote("");
+    if (error || !data) {
+      toast.error(`Kon notitie niet opslaan: ${error?.message ?? "onbekende fout"}`);
+      return;
     }
+
+    setNotes([data, ...notes]);
+    setNewNote("");
+    toast.success("Notitie toegevoegd.");
   }
 
   async function deleteNote(noteId: string) {
-    await supabase.from("lead_notes").delete().eq("id", noteId);
+    const { error } = await supabase
+      .from("lead_notes")
+      .delete()
+      .eq("id", noteId);
+    if (error) {
+      toast.error(`Kon notitie niet verwijderen: ${error.message}`);
+      return;
+    }
     setNotes(notes.filter((n) => n.id !== noteId));
   }
 
   async function addTag() {
     if (!newTag.trim() || !lead) return;
+    if (!orgId) {
+      toast.error("No organization found. Please sign in again.");
+      return;
+    }
     const trimmed = newTag.trim();
 
     // Check if tag already exists
@@ -171,20 +209,27 @@ export default function LeadDetailPage({
       return;
     }
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("lead_tags")
-      .insert({ lead_id: lead.id, tag: trimmed })
+      .insert({ org_id: orgId, lead_id: lead.id, tag: trimmed })
       .select()
       .single();
 
-    if (data) {
-      setTags([...tags, data]);
-      setNewTag("");
+    if (error || !data) {
+      toast.error(`Kon tag niet toevoegen: ${error?.message ?? "onbekende fout"}`);
+      return;
     }
+
+    setTags([...tags, data]);
+    setNewTag("");
   }
 
   async function removeTag(tagId: string) {
-    await supabase.from("lead_tags").delete().eq("id", tagId);
+    const { error } = await supabase.from("lead_tags").delete().eq("id", tagId);
+    if (error) {
+      toast.error(`Kon tag niet verwijderen: ${error.message}`);
+      return;
+    }
     setTags(tags.filter((t) => t.id !== tagId));
   }
 
@@ -211,13 +256,16 @@ export default function LeadDetailPage({
     if (!lead) return;
     setDeleting(true);
 
-    await Promise.all([
-      supabase.from("lead_tags").delete().eq("lead_id", lead.id),
-      supabase.from("lead_notes").delete().eq("lead_id", lead.id),
-      supabase.from("lead_trigger_events").delete().eq("lead_id", lead.id),
-    ]);
+    // Parent delete first — CASCADE handles tags, notes, and trigger events.
+    // Deleting children first would leave orphaned rows on RLS or FK failure.
+    const { error } = await supabase.from("leads").delete().eq("id", lead.id);
 
-    await supabase.from("leads").delete().eq("id", lead.id);
+    if (error) {
+      setDeleting(false);
+      toast.error(`Kon lead niet verwijderen: ${error.message}`);
+      return;
+    }
+    toast.success("Lead verwijderd.");
     router.push("/leads");
   }
 

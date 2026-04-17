@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useOrgId } from "@/hooks/use-org-id";
 import { useTranslation } from "@/components/language-provider";
 import type {
   Campaign,
@@ -133,6 +135,7 @@ export default function CampaignDetailPage({
   const router = useRouter();
   const supabase = createClient();
   const { t } = useTranslation();
+  const { orgId } = useOrgId();
 
   const statusLabels: Record<CampaignStatus, string> = {
     draft: t("common.draft"),
@@ -243,10 +246,16 @@ export default function CampaignDetailPage({
       .update({ status: newStatus })
       .eq("id", campaign.id);
 
-    if (!error) {
-      setCampaign({ ...campaign, status: newStatus });
-    }
     setToggling(false);
+
+    if (error) {
+      toast.error(`Kon status niet bijwerken: ${error.message}`);
+      return;
+    }
+    setCampaign({ ...campaign, status: newStatus });
+    toast.success(
+      newStatus === "active" ? "Campagne geactiveerd." : "Campagne gepauzeerd.",
+    );
   }
 
   async function loadAvailableLeads() {
@@ -271,23 +280,39 @@ export default function CampaignDetailPage({
 
   async function addSelectedLeads() {
     if (selectedLeadIds.size === 0 || !campaign) return;
+    if (!orgId) {
+      toast.error("No organization found. Please sign in again.");
+      return;
+    }
     setAddingLeads(true);
 
     const rows = Array.from(selectedLeadIds).map((leadId) => ({
+      org_id: orgId,
       campaign_id: campaign.id,
       lead_id: leadId,
       status: "pending",
     }));
 
-    const { error } = await supabase.from("campaign_leads").insert(rows);
+    // Upsert on the (campaign_id, lead_id) unique index — prevents "duplicate
+    // key" errors if a lead was already added in a different browser tab.
+    const { error } = await supabase
+      .from("campaign_leads")
+      .upsert(rows, { onConflict: "campaign_id,lead_id", ignoreDuplicates: true });
 
-    if (!error) {
-      setAddLeadsOpen(false);
-      setSelectedLeadIds(new Set());
-      setLeadSearch("");
-      await loadCampaign();
-    }
     setAddingLeads(false);
+
+    if (error) {
+      toast.error(`Kon leads niet toevoegen: ${error.message}`);
+      return;
+    }
+
+    toast.success(
+      `${rows.length} lead${rows.length !== 1 ? "s" : ""} toegevoegd.`,
+    );
+    setAddLeadsOpen(false);
+    setSelectedLeadIds(new Set());
+    setLeadSearch("");
+    await loadCampaign();
   }
 
   function toggleLeadSelection(leadId: string) {
