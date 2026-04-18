@@ -1,5 +1,5 @@
 import { inngest } from "../client";
-import { createClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { generateEmail } from "@/lib/ai/agents/writer";
 import { sendEmail } from "@/lib/email/sender";
 import {
@@ -13,13 +13,6 @@ import {
   buildUnsubscribeToken,
   buildUnsubscribeUrl,
 } from "@/lib/email/unsubscribe";
-
-function createServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
 
 function getAppUrl(): string {
   // NEXT_PUBLIC_APP_URL wins. VERCEL_URL is a hostname WITHOUT scheme

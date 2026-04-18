@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { processInboundMessage } from "@/lib/ai/agents/orchestrator";
+import { createServiceClient } from "@/lib/supabase/service";
 
 // Service-role client: inbound webhooks never carry a user session cookie,
 // and we need to write across org boundaries (leads, conversations, emails).
 function supa() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  return createServiceClient();
 }
 
 /**

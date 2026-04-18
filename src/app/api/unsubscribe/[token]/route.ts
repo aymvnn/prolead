@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { parseUnsubscribeToken } from "@/lib/email/unsubscribe";
 import { addSuppression } from "@/lib/email/suppression";
+import { createServiceClient } from "@/lib/supabase/service";
 
 /**
  * Public unsubscribe endpoint.
@@ -16,10 +16,7 @@ import { addSuppression } from "@/lib/email/suppression";
 function createService() {
   // We use the service role key here because this route is unauthenticated
   // (the recipient clicks from their inbox; they have no session).
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  return createServiceClient();
 }
 
 async function processUnsubscribe(token: string) {

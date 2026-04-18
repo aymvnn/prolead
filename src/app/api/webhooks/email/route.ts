@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { addSuppression } from "@/lib/email/suppression";
 import { verifyResendWebhook } from "@/lib/email/webhook-verify";
+import { createServiceClient } from "@/lib/supabase/service";
 
 /**
  * Resend webhook event types we handle.
@@ -35,10 +35,7 @@ interface ResendWebhookPayload {
 // We need the service-role client here because Resend posts without an auth
 // cookie — we can't use the SSR helper.
 function createService() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  return createServiceClient();
 }
 
 // POST /api/webhooks/email — Resend webhook handler

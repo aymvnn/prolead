@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 
 // The recipient opening the pixel / clicking a link has NO Supabase session
 // cookie, so the SSR client hits RLS and the UPDATE matches 0 rows. Use the
 // service-role client for this endpoint — tracking is not user-authenticated.
 function supa() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  return createServiceClient();
 }
 
 // Transparent 1x1 GIF (43 bytes)
