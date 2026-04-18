@@ -16,9 +16,15 @@ import {
 } from "@/lib/email/unsubscribe";
 
 function getAppUrl(): string {
+  // NEXT_PUBLIC_APP_URL wins. VERCEL_URL is a hostname WITHOUT scheme
+  // (e.g. "proleadghaym.vercel.app"); we must prepend https:// or the
+  // List-Unsubscribe header + unsubscribe link become unclickable.
+  const vercel = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "";
   return (
     process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.VERCEL_URL ||
+    vercel ||
     "http://localhost:3000"
   ).replace(/\/$/, "");
 }

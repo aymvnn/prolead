@@ -22,9 +22,15 @@ function createServiceClient() {
 }
 
 function getAppUrl(): string {
+  // NEXT_PUBLIC_APP_URL wins. VERCEL_URL is a hostname WITHOUT scheme
+  // (e.g. "proleadghaym.vercel.app"); we must prepend https:// or the
+  // List-Unsubscribe header + unsubscribe link become unclickable.
+  const vercel = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "";
   return (
     process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.VERCEL_URL ||
+    vercel ||
     "http://localhost:3000"
   ).replace(/\/$/, "");
 }
@@ -294,6 +300,38 @@ export const sendSequenceStep = inngest.createFunction(
         previousEmails,
       });
     });
+
+    // ── Gate 4: refuse to send if Writer failed ──────
+    // The Writer's generateStructured() fallback returns empty strings when
+    // the LLM call ultimately fails. Without this guard we would happily
+    // send an email with an empty subject + body, which is a deliverability
+    // and reputation disaster. Pause the lead and bail.
+    const subjectOk = (generatedEmail.subject ?? "").trim().length > 0;
+    const bodyOk = (generatedEmail.body_html ?? "").trim().length > 0;
+    if (!subjectOk || !bodyOk) {
+      await supabase
+        .from("campaign_leads")
+        .update({ status: "paused" })
+        .eq("id", campaignLeadId);
+      await supabase.from("analytics_events").insert({
+        org_id: campaign.org_id,
+        event_type: "email_skipped_blank_output",
+        entity_type: "lead",
+        entity_id: lead.id,
+        properties: {
+          step: stepNumber,
+          subject_empty: !subjectOk,
+          body_empty: !bodyOk,
+        },
+      });
+      return {
+        success: false,
+        skipped: true,
+        reason: "writer_blank_output",
+        campaignLeadId,
+        stepNumber,
+      };
+    }
 
     // ── Pick an email account and send ───────────────
     const sendResult = await step.run("send-email", async () => {
